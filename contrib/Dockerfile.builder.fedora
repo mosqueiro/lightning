@@ -1,6 +1,6 @@
 FROM fedora:29
 
-ENV BITCOIN_VERSION 0.17.0
+ENV ZCORE_VERSION 0.17.0
 WORKDIR /tmp
 
 RUN dnf update -y && \
@@ -24,13 +24,13 @@ RUN dnf update -y && \
 		zlib-devel && \
 	dnf clean all
 
-RUN wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/bitcoin-$BITCOIN_VERSION-x86_64-linux-gnu.tar.gz -O bitcoin.tar.gz && \
-    tar -xvzf bitcoin.tar.gz && \
-    mv bitcoin-$BITCOIN_VERSION/bin/bitcoin* /usr/local/bin/ && \
-    mv bitcoin-$BITCOIN_VERSION/lib/* /usr/local/lib/ && \
-    mv bitcoin-$BITCOIN_VERSION/include/* /usr/local/include/ && \
-    mv bitcoin-$BITCOIN_VERSION/share/man/man1/* /usr/share/man/man1 && \
-    rm -rf bitcoin.tar.gz bitcoin-$BITCOIN_VERSION
+RUN wget https://zcore.org/bin/zcore-core-$ZCORE_VERSION/zcore-$ZCORE_VERSION-x86_64-linux-gnu.tar.gz -O zcore.tar.gz && \
+    tar -xvzf zcore.tar.gz && \
+    mv zcore-$ZCORE_VERSION/bin/zcore* /usr/local/bin/ && \
+    mv zcore-$ZCORE_VERSION/lib/* /usr/local/lib/ && \
+    mv zcore-$ZCORE_VERSION/include/* /usr/local/include/ && \
+    mv zcore-$ZCORE_VERSION/share/man/man1/* /usr/share/man/man1 && \
+    rm -rf zcore.tar.gz zcore-$ZCORE_VERSION
 
 RUN python3 -m pip install --upgrade pip && \
-    python3 -m pip install python-bitcoinlib==0.7.0 pytest==3.0.5 setuptools==36.6.0 pytest-test-groups==1.0.3 flake8==3.5.0 pytest-rerunfailures==3.1 ephemeral-port-reserve==1.1.0
+    python3 -m pip install python-zcorelib==0.7.0 pytest==3.0.5 setuptools==36.6.0 pytest-test-groups==1.0.3 flake8==3.5.0 pytest-rerunfailures==3.1 ephemeral-port-reserve==1.1.0

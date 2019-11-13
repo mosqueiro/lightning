@@ -1,5 +1,5 @@
-#include <bitcoin/feerate.h>
-#include <bitcoin/script.h>
+#include <zcore/feerate.h>
+#include <zcore/script.h>
 #include <closingd/gen_closing_wire.h>
 #include <common/close_tx.h>
 #include <common/initial_commit_tx.h>
@@ -8,7 +8,7 @@
 #include <errno.h>
 #include <gossipd/gen_gossip_wire.h>
 #include <inttypes.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/channel.h>
 #include <lightningd/closing_control.h>
@@ -20,15 +20,15 @@
 #include <lightningd/subd.h>
 
 static struct amount_sat calc_tx_fee(struct amount_sat sat_in,
-				     const struct bitcoin_tx *tx)
+				     const struct zcore_tx *tx)
 {
 	struct amount_asset amt;
 	struct amount_sat fee = sat_in;
 	const u8 *oscript;
 	size_t scriptlen;
 	for (size_t i = 0; i < tx->wtx->num_outputs; i++) {
-		amt = bitcoin_tx_output_get_amount(tx, i);
-		oscript = bitcoin_tx_output_get_script(NULL, tx, i);
+		amt = zcore_tx_output_get_amount(tx, i);
+		oscript = zcore_tx_output_get_script(NULL, tx, i);
 		scriptlen = tal_bytelen(oscript);
 		tal_free(oscript);
 
@@ -43,7 +43,7 @@ static struct amount_sat calc_tx_fee(struct amount_sat sat_in,
 		if (!amount_sat_sub(&fee, fee, amount_asset_to_sat(&amt)))
 			fatal("Tx spends more than input %s? %s",
 			      type_to_string(tmpctx, struct amount_sat, &sat_in),
-			      type_to_string(tmpctx, struct bitcoin_tx, tx));
+			      type_to_string(tmpctx, struct zcore_tx, tx));
 	}
 	return fee;
 }
@@ -53,7 +53,7 @@ static struct amount_sat calc_tx_fee(struct amount_sat sat_in,
  * interrupted, rounds of negotiation. */
 static bool better_closing_fee(struct lightningd *ld,
 			       struct channel *channel,
-			       const struct bitcoin_tx *tx)
+			       const struct zcore_tx *tx)
 {
 	struct amount_sat fee, last_fee, min_fee;
 	u64 weight;
@@ -70,7 +70,7 @@ static bool better_closing_fee(struct lightningd *ld,
 		  type_to_string(tmpctx, struct amount_sat, &last_fee));
 
 	/* Weight once we add in sigs. */
-	weight = bitcoin_tx_weight(tx) + 74 * 2;
+	weight = zcore_tx_weight(tx) + 74 * 2;
 
 	/* If we don't have a feerate estimate, this gives feerate_floor */
 	min_feerate = feerate_min(ld, &feerate_unknown);
@@ -98,9 +98,9 @@ static bool better_closing_fee(struct lightningd *ld,
 static void peer_received_closing_signature(struct channel *channel,
 					    const u8 *msg)
 {
-	struct bitcoin_signature sig;
-	struct bitcoin_tx *tx;
-	struct bitcoin_txid tx_id;
+	struct zcore_signature sig;
+	struct zcore_tx *tx;
+	struct zcore_txid tx_id;
 	struct lightningd *ld = channel->peer->ld;
 
 	if (!fromwire_closing_received_signature(msg, msg, &sig, &tx)) {
@@ -118,7 +118,7 @@ static void peer_received_closing_signature(struct channel *channel,
 
 
 	// Send back the txid so we can update the billboard on selection.
-	bitcoin_txid(channel->last_tx, &tx_id);
+	zcore_txid(channel->last_tx, &tx_id);
 	/* OK, you can continue now. */
 	subd_send_msg(channel->owner,
 		      take(towire_closing_received_signature_reply(channel, &tx_id)));

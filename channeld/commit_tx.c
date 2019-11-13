@@ -1,5 +1,5 @@
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/endian/endian.h>
 #include <channeld/commit_tx.h>
 #include <common/htlc_trim.h>
@@ -34,7 +34,7 @@ size_t commit_tx_num_untrimmed(const struct htlc **htlcs,
 	return n;
 }
 
-static void add_offered_htlc_out(struct bitcoin_tx *tx, size_t n,
+static void add_offered_htlc_out(struct zcore_tx *tx, size_t n,
 				 const struct htlc *htlc,
 				 const struct keyset *keyset)
 {
@@ -45,14 +45,14 @@ static void add_offered_htlc_out(struct bitcoin_tx *tx, size_t n,
 	ripemd160(&ripemd, htlc->rhash.u.u8, sizeof(htlc->rhash.u.u8));
 	wscript = htlc_offered_wscript(tx, &ripemd, keyset);
 	p2wsh = scriptpubkey_p2wsh(tx, wscript);
-	bitcoin_tx_add_output(tx, p2wsh, amount);
+	zcore_tx_add_output(tx, p2wsh, amount);
 	SUPERVERBOSE("# HTLC %" PRIu64 " offered %s wscript %s\n", htlc->id,
 		     type_to_string(tmpctx, struct amount_sat, &amount),
 		     tal_hex(wscript, wscript));
 	tal_free(wscript);
 }
 
-static void add_received_htlc_out(struct bitcoin_tx *tx, size_t n,
+static void add_received_htlc_out(struct zcore_tx *tx, size_t n,
 				  const struct htlc *htlc,
 				  const struct keyset *keyset)
 {
@@ -65,7 +65,7 @@ static void add_received_htlc_out(struct bitcoin_tx *tx, size_t n,
 	p2wsh = scriptpubkey_p2wsh(tx, wscript);
 	amount = amount_msat_to_sat_round_down(htlc->amount);
 
-	bitcoin_tx_add_output(tx, p2wsh, amount);
+	zcore_tx_add_output(tx, p2wsh, amount);
 
 	SUPERVERBOSE("# HTLC %"PRIu64" received %s wscript %s\n",
 		     htlc->id,
@@ -75,9 +75,9 @@ static void add_received_htlc_out(struct bitcoin_tx *tx, size_t n,
 	tal_free(wscript);
 }
 
-struct bitcoin_tx *commit_tx(const tal_t *ctx,
+struct zcore_tx *commit_tx(const tal_t *ctx,
 			     const struct chainparams *chainparams,
-			     const struct bitcoin_txid *funding_txid,
+			     const struct zcore_txid *funding_txid,
 			     unsigned int funding_txout,
 			     struct amount_sat funding,
 			     enum side funder,
@@ -94,7 +94,7 @@ struct bitcoin_tx *commit_tx(const tal_t *ctx,
 {
 	struct amount_sat base_fee;
 	struct amount_msat total_pay;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	size_t i, n, untrimmed;
 	u32 *cltvs;
 
@@ -147,7 +147,7 @@ struct bitcoin_tx *commit_tx(const tal_t *ctx,
 #endif
 
 	/* Worst-case sizing: both to-local and to-remote outputs. */
-	tx = bitcoin_tx(ctx, chainparams, 1, untrimmed + 2);
+	tx = zcore_tx(ctx, chainparams, 1, untrimmed + 2);
 
 	/* We keep track of which outputs have which HTLCs */
 	*htlcmap = tal_arr(tx, const struct htlc *, tx->wtx->outputs_allocation_len);
@@ -203,7 +203,7 @@ struct bitcoin_tx *commit_tx(const tal_t *ctx,
 		u8 *p2wsh = scriptpubkey_p2wsh(tx, wscript);
 		struct amount_sat amount = amount_msat_to_sat_round_down(self_pay);
 
-		bitcoin_tx_add_output(tx, p2wsh, amount);
+		zcore_tx_add_output(tx, p2wsh, amount);
 		(*htlcmap)[n] = NULL;
 		/* We don't assign cltvs[n]: if we use it, order doesn't matter.
 		 * However, valgrind will warn us something wierd is happening */
@@ -230,7 +230,7 @@ struct bitcoin_tx *commit_tx(const tal_t *ctx,
 		 * This output sends funds to the other peer and thus is a simple
 		 * P2WPKH to `remotepubkey`.
 		 */
-		int pos = bitcoin_tx_add_output(tx, p2wpkh, amount);
+		int pos = zcore_tx_add_output(tx, p2wpkh, amount);
 		assert(pos == n);
 		(*htlcmap)[n] = NULL;
 		/* We don't assign cltvs[n]: if we use it, order doesn't matter.
@@ -287,7 +287,7 @@ struct bitcoin_tx *commit_tx(const tal_t *ctx,
 	 *    * `txin[0]` sequence: upper 8 bits are 0x80, lower 24 bits are upper 24 bits of the obscured commitment number
 	 */
 	u32 sequence = (0x80000000 | ((obscured_commitment_number>>24) & 0xFFFFFF));
-	bitcoin_tx_add_input(tx, funding_txid, funding_txout, sequence, funding, NULL);
+	zcore_tx_add_input(tx, funding_txid, funding_txout, sequence, funding, NULL);
 
 	elements_tx_add_fee_output(tx);
 

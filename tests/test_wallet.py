@@ -13,7 +13,7 @@ import unittest
 
 
 @unittest.skipIf(TEST_NETWORK != 'regtest', "Test relies on a number of example addresses valid only in regtest")
-def test_withdraw(node_factory, bitcoind):
+def test_withdraw(node_factory, zcored):
     amount = 1000000
     # Don't get any funds from previous runs.
     l1 = node_factory.get_node(random_hsm=True)
@@ -22,15 +22,15 @@ def test_withdraw(node_factory, bitcoind):
 
     # Add some funds to withdraw later
     for i in range(10):
-        l1.bitcoin.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
+        l1.zcore.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 10)
 
     # Reach around into the db to check that outputs were added
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=0')[0]['c'] == 10
 
-    waddr = l1.bitcoin.rpc.getnewaddress()
+    waddr = l1.zcore.rpc.getnewaddress()
     # Now attempt to withdraw some (making sure we collect multiple inputs)
     with pytest.raises(RpcError):
         l1.rpc.withdraw('not an address', amount)
@@ -43,14 +43,14 @@ def test_withdraw(node_factory, bitcoind):
 
     out = l1.rpc.withdraw(waddr, 2 * amount)
 
-    # Make sure bitcoind received the withdrawal
-    unspent = l1.bitcoin.rpc.listunspent(0)
+    # Make sure zcored received the withdrawal
+    unspent = l1.zcore.rpc.listunspent(0)
     withdrawal = [u for u in unspent if u['txid'] == out['txid']]
 
     assert(withdrawal[0]['amount'] == Decimal('0.02'))
 
-    l1.bitcoin.generate_block(1)
-    sync_blockheight(l1.bitcoin, [l1])
+    l1.zcore.generate_block(1)
+    sync_blockheight(l1.zcore, [l1])
 
     # Check that there are no unconfirmed outputs (change should be confirmed)
     for o in l1.rpc.listfunds()['outputs']:
@@ -63,7 +63,7 @@ def test_withdraw(node_factory, bitcoind):
     # lightningd uses P2SH-P2WPKH
     waddr = l2.rpc.newaddr('bech32')['bech32']
     l1.rpc.withdraw(waddr, 2 * amount)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     # Make sure l2 received the withdrawal.
     wait_for(lambda: len(l2.rpc.listfunds()['outputs']) == 1)
@@ -83,7 +83,7 @@ def test_withdraw(node_factory, bitcoind):
     with pytest.raises(RpcError):
         l1.rpc.withdraw('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxxxxxx', 2 * amount)
     l1.rpc.withdraw(waddr, 2 * amount)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     # Now make sure additional two of them were marked as spent
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=2')[0]['c'] == 6
 
@@ -97,7 +97,7 @@ def test_withdraw(node_factory, bitcoind):
     with pytest.raises(RpcError):
         l1.rpc.withdraw('tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qxxxxxx', 2 * amount)
     l1.rpc.withdraw(waddr, 2 * amount)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     # Now make sure additional two of them were marked as spent
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=2')[0]['c'] == 8
 
@@ -132,7 +132,7 @@ def test_withdraw(node_factory, bitcoind):
 
     # Test withdrawal to self.
     l1.rpc.withdraw(l1.rpc.newaddr('bech32')['bech32'], 'all', minconf=0)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=0')[0]['c'] == 1
 
     l1.rpc.withdraw(waddr, 'all', minconf=0)
@@ -144,16 +144,16 @@ def test_withdraw(node_factory, bitcoind):
 
     # Add some funds to withdraw
     for i in range(10):
-        l1.bitcoin.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
+        l1.zcore.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 10)
 
     # Try passing in a utxo set
     utxos = [utxo["txid"] + ":" + str(utxo["output"]) for utxo in l1.rpc.listfunds()["outputs"]][:4]
 
     withdrawal = l1.rpc.withdraw(waddr, 2 * amount, utxos=utxos)
-    decode = bitcoind.rpc.decoderawtransaction(withdrawal['tx'])
+    decode = zcored.rpc.decoderawtransaction(withdrawal['tx'])
     assert decode['txid'] == withdrawal['txid']
 
     # Check that correct utxos are included
@@ -163,7 +163,7 @@ def test_withdraw(node_factory, bitcoind):
         assert utxo in vins
 
 
-def test_minconf_withdraw(node_factory, bitcoind):
+def test_minconf_withdraw(node_factory, zcored):
     """Issue 2518: ensure that ridiculous confirmation levels don't overflow
 
     The number of confirmations is used to compute a maximum height that is to
@@ -179,24 +179,24 @@ def test_minconf_withdraw(node_factory, bitcoind):
 
     # Add some funds to withdraw later
     for i in range(10):
-        l1.bitcoin.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
+        l1.zcore.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 10)
     with pytest.raises(RpcError):
         l1.rpc.withdraw(destination=addr, satoshi=10000, feerate='normal', minconf=9999999)
 
 
-def test_addfunds_from_block(node_factory, bitcoind):
+def test_addfunds_from_block(node_factory, zcored):
     """Send funds to the daemon without telling it explicitly
     """
-    # Previous runs with same bitcoind can leave funds!
+    # Previous runs with same zcored can leave funds!
     l1 = node_factory.get_node(random_hsm=True)
 
     addr = l1.rpc.newaddr()['bech32']
-    bitcoind.rpc.sendtoaddress(addr, 0.1)
-    bitcoind.generate_block(1)
+    zcored.rpc.sendtoaddress(addr, 0.1)
+    zcored.generate_block(1)
 
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 1)
 
@@ -210,7 +210,7 @@ def test_addfunds_from_block(node_factory, bitcoind):
     # Send all our money to a P2WPKH address this time.
     addr = l1.rpc.newaddr("bech32")['bech32']
     l1.rpc.withdraw(addr, "all")
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     time.sleep(1)
 
     # The address we detect must match what was paid to.
@@ -219,7 +219,7 @@ def test_addfunds_from_block(node_factory, bitcoind):
 
 
 @unittest.skipIf(not COMPAT, "needs COMPAT=1")
-def test_deprecated_txprepare(node_factory, bitcoind):
+def test_deprecated_txprepare(node_factory, zcored):
     """Test the deprecated old-style:
        txprepare {destination} {satoshi} {feerate} {minconf}
     """
@@ -230,8 +230,8 @@ def test_deprecated_txprepare(node_factory, bitcoind):
     for i in range(7):
         l1.fundwallet(10**8)
 
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, [l1])
+    zcored.generate_block(1)
+    sync_blockheight(zcored, [l1])
 
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 7)
 
@@ -262,23 +262,23 @@ def test_deprecated_txprepare(node_factory, bitcoind):
     l1.rpc.call('txprepare', {'destination': addr, 'satoshi': Millisatoshi(amount * 100)})
 
 
-def test_txprepare(node_factory, bitcoind, chainparams):
+def test_txprepare(node_factory, zcored, chainparams):
     amount = 1000000
     l1 = node_factory.get_node(random_hsm=True)
     addr = chainparams['example_addr']
 
     # Add some funds to withdraw later: both bech32 and p2sh
     for i in range(5):
-        bitcoind.rpc.sendtoaddress(l1.rpc.newaddr()['bech32'],
+        zcored.rpc.sendtoaddress(l1.rpc.newaddr()['bech32'],
                                    amount / 10**8)
-        bitcoind.rpc.sendtoaddress(l1.rpc.newaddr('p2sh-segwit')['p2sh-segwit'],
+        zcored.rpc.sendtoaddress(l1.rpc.newaddr('p2sh-segwit')['p2sh-segwit'],
                                    amount / 10**8)
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 10)
 
     prep = l1.rpc.txprepare([{addr: Millisatoshi(amount * 3 * 1000)}])
-    decode = bitcoind.rpc.decoderawtransaction(prep['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep['unsigned_tx'])
     assert decode['txid'] == prep['txid']
     # 4 inputs, 2 outputs (3 if we have a fee output).
     assert len(decode['vin']) == 4
@@ -296,7 +296,7 @@ def test_txprepare(node_factory, bitcoind, chainparams):
 
     # Now prepare one with no change.
     prep2 = l1.rpc.txprepare([{addr: 'all'}])
-    decode = bitcoind.rpc.decoderawtransaction(prep2['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep2['unsigned_tx'])
     assert decode['txid'] == prep2['txid']
     # 6 inputs, 1 outputs.
     assert len(decode['vin']) == 6
@@ -314,7 +314,7 @@ def test_txprepare(node_factory, bitcoind, chainparams):
     assert discard['unsigned_tx'] == prep['unsigned_tx']
 
     prep3 = l1.rpc.txprepare([{addr: 'all'}])
-    decode = bitcoind.rpc.decoderawtransaction(prep3['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep3['unsigned_tx'])
     assert decode['txid'] == prep3['txid']
     # 4 inputs, 1 outputs.
     assert len(decode['vin']) == 4
@@ -334,7 +334,7 @@ def test_txprepare(node_factory, bitcoind, chainparams):
     l1.rpc.txdiscard(prep2['txid'])
     l1.rpc.txdiscard(prep3['txid'])
     prep4 = l1.rpc.txprepare([{addr: 'all'}])
-    decode = bitcoind.rpc.decoderawtransaction(prep4['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep4['unsigned_tx'])
     assert decode['txid'] == prep4['txid']
     # 10 inputs, 1 outputs.
     assert len(decode['vin']) == 10
@@ -353,7 +353,7 @@ def test_txprepare(node_factory, bitcoind, chainparams):
     prep5 = l1.rpc.txprepare([{addr:
                              Millisatoshi(amount * 3.5 * 1000)}], utxos=utxos)
 
-    decode = bitcoind.rpc.decoderawtransaction(prep5['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep5['unsigned_tx'])
     assert decode['txid'] == prep5['txid']
 
     # Check that correct utxos are included
@@ -375,7 +375,7 @@ def test_txprepare(node_factory, bitcoind, chainparams):
                                   {addr: 'all'}])
     prep5 = l1.rpc.txprepare([{addr: Millisatoshi(amount * 3 * 500 + 100000)},
                               {addr: Millisatoshi(amount * 3 * 500 - 100000)}])
-    decode = bitcoind.rpc.decoderawtransaction(prep5['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep5['unsigned_tx'])
     assert decode['txid'] == prep5['txid']
     # 4 inputs, 3 outputs(include change).
     assert len(decode['vin']) == 4
@@ -399,18 +399,18 @@ def test_txprepare(node_factory, bitcoind, chainparams):
     assert decode['vout'][changenum]['scriptPubKey']['type'] == 'witness_v0_keyhash'
 
 
-def test_txsend(node_factory, bitcoind, chainparams):
+def test_txsend(node_factory, zcored, chainparams):
     amount = 1000000
     l1 = node_factory.get_node(random_hsm=True)
     addr = chainparams['example_addr']
 
     # Add some funds to withdraw later: both bech32 and p2sh
     for i in range(5):
-        bitcoind.rpc.sendtoaddress(l1.rpc.newaddr()['bech32'],
+        zcored.rpc.sendtoaddress(l1.rpc.newaddr()['bech32'],
                                    amount / 10**8)
-        bitcoind.rpc.sendtoaddress(l1.rpc.newaddr('p2sh-segwit')['p2sh-segwit'],
+        zcored.rpc.sendtoaddress(l1.rpc.newaddr('p2sh-segwit')['p2sh-segwit'],
                                    amount / 10**8)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 10)
 
     prep = l1.rpc.txprepare([{addr: Millisatoshi(amount * 3 * 1000)}])
@@ -420,13 +420,13 @@ def test_txsend(node_factory, bitcoind, chainparams):
     with pytest.raises(RpcError, match=r'not an unreleased txid'):
         l1.rpc.txdiscard(prep['txid'])
 
-    wait_for(lambda: prep['txid'] in bitcoind.rpc.getrawmempool())
+    wait_for(lambda: prep['txid'] in zcored.rpc.getrawmempool())
 
     # Signed tx should have same txid
-    decode = bitcoind.rpc.decoderawtransaction(out['tx'])
+    decode = zcored.rpc.decoderawtransaction(out['tx'])
     assert decode['txid'] == prep['txid']
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     # Change output should appear.
     if decode['vout'][0]['value'] == Decimal(amount * 3) / 10**8:
@@ -443,22 +443,22 @@ def test_txsend(node_factory, bitcoind, chainparams):
     assert decode['vout'][changenum]['scriptPubKey']['addresses'][0] in [f['address'] for f in l1.rpc.listfunds()['outputs']]
 
 
-def test_txprepare_restart(node_factory, bitcoind, chainparams):
+def test_txprepare_restart(node_factory, zcored, chainparams):
     amount = 1000000
     l1 = node_factory.get_node(may_fail=True)
     addr = chainparams['example_addr']
 
     # Add some funds to withdraw later: both bech32 and p2sh
     for i in range(5):
-        bitcoind.rpc.sendtoaddress(l1.rpc.newaddr()['bech32'],
+        zcored.rpc.sendtoaddress(l1.rpc.newaddr()['bech32'],
                                    amount / 10**8)
-        bitcoind.rpc.sendtoaddress(l1.rpc.newaddr('p2sh-segwit')['p2sh-segwit'],
+        zcored.rpc.sendtoaddress(l1.rpc.newaddr('p2sh-segwit')['p2sh-segwit'],
                                    amount / 10**8)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: [o['status'] for o in l1.rpc.listfunds()['outputs']] == ['confirmed'] * 10)
 
     prep = l1.rpc.txprepare([{addr: 'all'}])
-    decode = bitcoind.rpc.decoderawtransaction(prep['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep['unsigned_tx'])
     assert decode['txid'] == prep['txid']
     # All 10 inputs
     assert len(decode['vin']) == 10
@@ -474,7 +474,7 @@ def test_txprepare_restart(node_factory, bitcoind, chainparams):
 
     prep = l1.rpc.txprepare([{addr: 'all'}])
 
-    decode = bitcoind.rpc.decoderawtransaction(prep['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep['unsigned_tx'])
     assert decode['txid'] == prep['txid']
     # All 10 inputs
     assert len(decode['vin']) == 10
@@ -490,7 +490,7 @@ def test_txprepare_restart(node_factory, bitcoind, chainparams):
         assert l1.daemon.is_in_log('wallet: reserved output {}/{} reset to available'.format(i['txid'], i['vout']))
 
     prep = l1.rpc.txprepare([{addr: 'all'}])
-    decode = bitcoind.rpc.decoderawtransaction(prep['unsigned_tx'])
+    decode = zcored.rpc.decoderawtransaction(prep['unsigned_tx'])
     assert decode['txid'] == prep['txid']
     # All 10 inputs
     assert len(decode['vin']) == 10
@@ -498,7 +498,7 @@ def test_txprepare_restart(node_factory, bitcoind, chainparams):
 
 @unittest.skipIf(TEST_NETWORK != 'regtest', "Fee outputs throw off our output matching logic")
 @unittest.skipIf(not EXPERIMENTAL_FEATURES, "Tests annotations which are compiled only with experimental features")
-def test_transaction_annotations(node_factory, bitcoind):
+def test_transaction_annotations(node_factory, zcored):
     l1, l2, l3 = node_factory.get_nodes(3)
     l1.fundwallet(10**6)
 
@@ -543,8 +543,8 @@ def test_transaction_annotations(node_factory, bitcoind):
     assert(outputs[0]['txid'] == fundingtx['txid'])
 
     # Confirm the channel and check that the output changed to confirmed
-    bitcoind.generate_block(3)
-    sync_blockheight(bitcoind, [l1, l2])
+    zcored.generate_block(3)
+    sync_blockheight(zcored, [l1, l2])
     outputs = l1.rpc.listfunds()['outputs']
     assert(len(outputs) == 1 and outputs[0]['status'] == 'confirmed')
 

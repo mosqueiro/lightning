@@ -5,7 +5,7 @@
  * and a few startup sanity checks.
  *
  * The role of this daemon is to start the subdaemons, shuffle peers
- * between them, handle the JSON RPC requests, bitcoind, the database
+ * between them, handle the JSON RPC requests, zcored, the database
  * and centralize logging.  In theory, it doesn't trust the other
  * daemons, though we expect `hsmd` (which holds secret keys) to be
  * responsive.
@@ -64,7 +64,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <gen_header_versions.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/channel_control.h>
 #include <lightningd/connect_control.h>
@@ -96,9 +96,9 @@ static struct lightningd *new_lightningd(const tal_t *ctx)
 	 * the entire subtree rooted at that node to be freed.
 	 *
 	 * It's incredibly useful for grouping object lifetimes, as we'll see.
-	 * For example, a `struct bitcoin_tx` has a pointer to an array of
-	 * `struct bitcoin_tx_input`; they are allocated off the `struct
-	 * bitcoind_tx`, so freeing the `struct bitcoind_tx` frees them all.
+	 * For example, a `struct zcore_tx` has a pointer to an array of
+	 * `struct zcore_tx_input`; they are allocated off the `struct
+	 * zcored_tx`, so freeing the `struct zcored_tx` frees them all.
 	 *
 	 * In this case, freeing `ctx` will free `ld`:
 	 */
@@ -478,10 +478,10 @@ static void shutdown_subdaemons(struct lightningd *ld)
 const struct chainparams *get_chainparams(const struct lightningd *ld)
 {
 	/* "The lightningd is connected to the blockchain."
-	 * "The blockchain is connected to the bitcoind API."
-	 * "The bitcoind API is connected chain parameters."
+	 * "The blockchain is connected to the zcored API."
+	 * "The zcored API is connected chain parameters."
 	 * -- Worst childhood song ever. */
-	return ld->topology->bitcoind->chainparams;
+	return ld->topology->zcored->chainparams;
 }
 
 /*~ Our wallet logic needs to know what outputs we might be interested in.  We
@@ -702,8 +702,8 @@ int main(int argc, char *argv[])
 	test_subdaemons(ld);
 
 	/*~ Our "wallet" code really wraps the db, which is more than a simple
-	 * bitcoin wallet (though it's that too).  It also stores channel
-	 * states, invoices, payments, blocks and bitcoin transactions. */
+	 * zcore wallet (though it's that too).  It also stores channel
+	 * states, invoices, payments, blocks and zcore transactions. */
 	ld->wallet = wallet_new(ld, ld->log, ld->timers);
 
 	/*~ We keep a filter of scriptpubkeys we're interested in. */
@@ -758,7 +758,7 @@ int main(int argc, char *argv[])
 	init_txfilter(ld->wallet, ld->owned_txfilter);
 
 	/*~ Get the blockheight we are currently at, UINT32_MAX is used to signal
-	 * an uninitialized wallet and that we should start off of bitcoind's
+	 * an uninitialized wallet and that we should start off of zcored's
 	 * current height */
 	wallet_blocks_heights(ld->wallet, UINT32_MAX,
 			      &min_blockheight, &max_blockheight);
@@ -775,13 +775,13 @@ int main(int argc, char *argv[])
 
 	/*~ Tell the wallet to start figuring out what to do for any reserved
 	 * unspent outputs we may have crashed with. */
-	wallet_clean_utxos(ld->wallet, ld->topology->bitcoind);
+	wallet_clean_utxos(ld->wallet, ld->topology->zcored);
 
 	/*~ That's all of the wallet db operations for now. */
 	db_commit_transaction(ld->wallet->db);
 
 	/*~ Initialize block topology.  This does its own io_loop to
-	 * talk to bitcoind, so does its own db transactions. */
+	 * talk to zcored, so does its own db transactions. */
 	setup_topology(ld->topology, ld->timers,
 		       min_blockheight, max_blockheight);
 
@@ -837,7 +837,7 @@ int main(int argc, char *argv[])
 	activate_peers(ld);
 
 	/*~ Now that all the notifications for transactions are in place, we
-	 *  can start the poll loop which queries bitcoind for new blocks. */
+	 *  can start the poll loop which queries zcored for new blocks. */
 	begin_topology(ld->topology);
 
 	/*~ To handle --daemon, we fork the daemon early (otherwise we hit

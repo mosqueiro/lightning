@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_LIGHTNINGD_GOSSIP_MSG_H
 #define LIGHTNING_LIGHTNINGD_GOSSIP_MSG_H
 #include "config.h"
-#include <bitcoin/pubkey.h>
+#include <zcore/pubkey.h>
 #include <gossipd/routing.h>
 
 struct route_info;

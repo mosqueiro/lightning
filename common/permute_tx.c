@@ -63,7 +63,7 @@ static void swap_input_amounts(struct amount_sat **amounts, size_t i1,
 	amounts[i2] = tmp;
 }
 
-void permute_inputs(struct bitcoin_tx *tx, const void **map)
+void permute_inputs(struct zcore_tx *tx, const void **map)
 {
 	size_t i, best_pos;
 	struct wally_tx_input *inputs = tx->wtx->inputs;
@@ -156,7 +156,7 @@ static size_t find_best_out(struct wally_tx_output *outputs, const u32 *cltvs,
 	return best;
 }
 
-void permute_outputs(struct bitcoin_tx *tx, u32 *cltvs, const void **map)
+void permute_outputs(struct zcore_tx *tx, u32 *cltvs, const void **map)
 {
 	size_t i, best_pos;
 	struct wally_tx_output *outputs = tx->wtx->outputs;

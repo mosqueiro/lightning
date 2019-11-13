@@ -1,5 +1,5 @@
-#include <bitcoin/pubkey.h>
-#include <bitcoin/script.h>
+#include <zcore/pubkey.h>
+#include <zcore/script.h>
 #include <ccan/cast/cast.h>
 #include <channeld/gen_channel_wire.h>
 #include <common/features.h>
@@ -126,11 +126,11 @@ static void peer_got_funding_locked(struct channel *channel, const u8 *msg)
 static void peer_got_announcement(struct channel *channel, const u8 *msg)
 {
 	secp256k1_ecdsa_signature remote_ann_node_sig;
-	secp256k1_ecdsa_signature remote_ann_bitcoin_sig;
+	secp256k1_ecdsa_signature remote_ann_zcore_sig;
 
 	if (!fromwire_channel_got_announcement(msg,
 					       &remote_ann_node_sig,
-					       &remote_ann_bitcoin_sig)) {
+					       &remote_ann_zcore_sig)) {
 		channel_internal_error(channel,
 				       "bad channel_got_announcement %s",
 				       tal_hex(tmpctx, msg));
@@ -139,7 +139,7 @@ static void peer_got_announcement(struct channel *channel, const u8 *msg)
 
 	wallet_announcement_save(channel->peer->ld->wallet, channel->dbid,
 				 &remote_ann_node_sig,
-				 &remote_ann_bitcoin_sig);
+				 &remote_ann_zcore_sig);
 }
 
 static void peer_got_shutdown(struct channel *channel, const u8 *msg)
@@ -341,7 +341,7 @@ void peer_start_channeld(struct channel *channel,
 	const struct config *cfg = &ld->config;
 	bool reached_announce_depth;
 	struct secret last_remote_per_commit_secret;
-	secp256k1_ecdsa_signature *remote_ann_node_sig, *remote_ann_bitcoin_sig;
+	secp256k1_ecdsa_signature *remote_ann_node_sig, *remote_ann_zcore_sig;
 
 	hsmfd = hsm_get_client_fd(ld, &channel->peer->id,
 				  channel->dbid,
@@ -414,7 +414,7 @@ void peer_start_channeld(struct channel *channel,
 		log_debug(channel->log, "Ignoring fee limits!");
 
 	if(!wallet_remote_ann_sigs_load(tmpctx, channel->peer->ld->wallet, channel->dbid,
-				       &remote_ann_node_sig, &remote_ann_bitcoin_sig)) {
+				       &remote_ann_node_sig, &remote_ann_zcore_sig)) {
 		channel_internal_error(channel,
 				       "Could not load remote announcement signatures");
 		return;
@@ -473,7 +473,7 @@ void peer_start_channeld(struct channel *channel,
 				      channel->peer->features,
 				      channel->remote_upfront_shutdown_script,
 				      remote_ann_node_sig,
-				      remote_ann_bitcoin_sig,
+				      remote_ann_zcore_sig,
 				      /* Set at channel open, even if not
 				       * negotiated now! */
 				      channel->option_static_remotekey,
@@ -489,12 +489,12 @@ void peer_start_channeld(struct channel *channel,
 
 bool channel_tell_depth(struct lightningd *ld,
 				 struct channel *channel,
-				 const struct bitcoin_txid *txid,
+				 const struct zcore_txid *txid,
 				 u32 depth)
 {
 	const char *txidstr;
 
-	txidstr = type_to_string(tmpctx, struct bitcoin_txid, txid);
+	txidstr = type_to_string(tmpctx, struct zcore_txid, txid);
 
 	/* If not awaiting lockin/announce, it doesn't care any more */
 	if (channel->state != CHANNELD_AWAITING_LOCKIN
@@ -598,7 +598,7 @@ void channel_notify_new_block(struct lightningd *ld,
 			    "We are fundee and can forget channel without "
 			    "loss of funds.",
 			    block_height - channel->first_blocknum,
-			    type_to_string(tmpctx, struct bitcoin_txid,
+			    type_to_string(tmpctx, struct zcore_txid,
 					   &channel->funding_txid));
 		/* FIXME: Send an error packet for this case! */
 		/* And forget it. */
@@ -624,7 +624,7 @@ static struct channel *find_channel_by_id(const struct peer *peer,
 	return NULL;
 }
 
-/* Since this could vanish while we're checking with bitcoind, we need to save
+/* Since this could vanish while we're checking with zcored, we need to save
  * the details and re-lookup.
  *
  * channel_id *should* be unique, but it can be set by the counterparty, so
@@ -634,8 +634,8 @@ struct channel_to_cancel {
 	struct channel_id cid;
 };
 
-static void process_check_funding_broadcast(struct bitcoind *bitcoind,
-					    const struct bitcoin_tx_output *txout,
+static void process_check_funding_broadcast(struct zcored *zcored,
+					    const struct zcore_tx_output *txout,
 					    void *arg)
 {
 	struct channel_to_cancel *cc = arg;
@@ -643,7 +643,7 @@ static void process_check_funding_broadcast(struct bitcoind *bitcoind,
 	struct channel *cancel;
 
 	/* Peer could have errored out while we were waiting */
-	peer = peer_by_id(bitcoind->ld, &cc->peer);
+	peer = peer_by_id(zcored->ld, &cc->peer);
 	if (!peer)
 		return;
 	cancel = find_channel_by_id(peer, &cc->cid);
@@ -735,7 +735,7 @@ struct command_result *cancel_channel_before_broadcast(struct command *cmd,
 	/* Note: The above check and this check can't completely ensure that
 	 * the funding transaction isn't broadcast. We can't know if the funding
 	 * is broadcast by external wallet and the transaction hasn't been onchain. */
-	bitcoind_gettxout(cmd->ld->topology->bitcoind,
+	zcored_gettxout(cmd->ld->topology->zcored,
 			  &cancel_channel->funding_txid,
 			  cancel_channel->funding_outnum,
 			  process_check_funding_broadcast,

@@ -7,10 +7,10 @@
  * there's nothing permanent about the channel: lightningd will only have to
  * commit to the database once openingd succeeds.
  */
-#include <bitcoin/block.h>
-#include <bitcoin/chainparams.h>
-#include <bitcoin/privkey.h>
-#include <bitcoin/script.h>
+#include <zcore/block.h>
+#include <zcore/chainparams.h>
+#include <zcore/privkey.h>
+#include <zcore/script.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/breakpoint/breakpoint.h>
 #include <ccan/cast/cast.h>
@@ -89,7 +89,7 @@ struct state {
 	struct amount_sat funding;
 	struct amount_msat push_msat;
 	u32 feerate_per_kw;
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	u16 funding_txout;
 	/* If set, this is the scriptpubkey they *must* close with */
 	u8 *remote_upfront_shutdown_script;
@@ -620,7 +620,7 @@ static u8 *funder_channel_start(struct state *state,
 
 	funding_output_script =
 		scriptpubkey_p2wsh(tmpctx,
-				   bitcoin_redeem_2of2(tmpctx,
+				   zcore_redeem_2of2(tmpctx,
 						       &state->our_funding_pubkey,
 						       &state->their_funding_pubkey));
 
@@ -638,8 +638,8 @@ static u8 *funder_channel_start(struct state *state,
 
 static bool funder_finalize_channel_setup(struct state *state,
 					  struct amount_msat local_msat,
-					  struct bitcoin_signature *sig,
-					  struct bitcoin_tx **tx)
+					  struct zcore_signature *sig,
+					  struct zcore_tx **tx)
 {
 	u8 *msg;
 	struct channel_id id_in;
@@ -718,8 +718,8 @@ static bool funder_finalize_channel_setup(struct state *state,
 	/* You can tell this has been a problem before, since there's a debug
 	 * message here: */
 	status_debug("signature %s on tx %s using key %s",
-		     type_to_string(tmpctx, struct bitcoin_signature, sig),
-		     type_to_string(tmpctx, struct bitcoin_tx, *tx),
+		     type_to_string(tmpctx, struct zcore_signature, sig),
+		     type_to_string(tmpctx, struct zcore_tx, *tx),
 		     type_to_string(tmpctx, struct pubkey,
 				    &state->our_funding_pubkey));
 
@@ -808,9 +808,9 @@ static bool funder_finalize_channel_setup(struct state *state,
 		peer_failed(state->pps,
 			    &state->channel_id,
 			    "Bad signature %s on tx %s using key %s",
-			    type_to_string(tmpctx, struct bitcoin_signature,
+			    type_to_string(tmpctx, struct zcore_signature,
 					   sig),
-			    type_to_string(tmpctx, struct bitcoin_tx, *tx),
+			    type_to_string(tmpctx, struct zcore_tx, *tx),
 			    type_to_string(tmpctx, struct pubkey,
 					   &state->their_funding_pubkey));
 	}
@@ -826,14 +826,14 @@ fail:
 
 static u8 *funder_channel_complete(struct state *state)
 {
-	struct bitcoin_tx *tx;
-	struct bitcoin_signature sig;
+	struct zcore_tx *tx;
+	struct zcore_signature sig;
 	struct amount_msat local_msat;
 
 	/* Update the billboard about what we're doing*/
 	peer_billboard(false,
 		       "Funding channel con't: continuing with funding_txid %s",
-		       type_to_string(tmpctx, struct bitcoin_txid, &state->funding_txid));
+		       type_to_string(tmpctx, struct zcore_txid, &state->funding_txid));
 
 	/* We recalculate the local_msat from cached values; should
 	 * succeed because we checked it earlier */
@@ -867,9 +867,9 @@ static u8 *fundee_channel(struct state *state, const u8 *open_channel_msg)
 	struct channel_id id_in;
 	struct basepoints theirs;
 	struct pubkey their_funding_pubkey;
-	struct bitcoin_signature theirsig, sig;
-	struct bitcoin_tx *local_commit, *remote_commit;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_signature theirsig, sig;
+	struct zcore_tx *local_commit, *remote_commit;
+	struct zcore_blkid chain_hash;
 	u8 *msg;
 	const u8 *wscript;
 	u8 channel_flags;
@@ -940,12 +940,12 @@ static u8 *fundee_channel(struct state *state, const u8 *open_channel_msg)
 	 *  - the `chain_hash` value is set to a hash of a chain
 	 *  that is unknown to the receiver.
 	 */
-	if (!bitcoin_blkid_eq(&chain_hash,
+	if (!zcore_blkid_eq(&chain_hash,
 			      &state->chainparams->genesis_blockhash)) {
 		negotiation_failed(state, false,
 				   "Unknown chain-hash %s",
 				   type_to_string(tmpctx,
-						  struct bitcoin_blkid,
+						  struct zcore_blkid,
 						  &chain_hash));
 		return NULL;
 	}
@@ -1175,9 +1175,9 @@ static u8 *fundee_channel(struct state *state, const u8 *open_channel_msg)
 		peer_failed(state->pps,
 			    &state->channel_id,
 			    "Bad signature %s on tx %s using key %s",
-			    type_to_string(tmpctx, struct bitcoin_signature,
+			    type_to_string(tmpctx, struct zcore_signature,
 					   &theirsig),
-			    type_to_string(tmpctx, struct bitcoin_tx, local_commit),
+			    type_to_string(tmpctx, struct zcore_tx, local_commit),
 			    type_to_string(tmpctx, struct pubkey,
 					   &their_funding_pubkey));
 	}
@@ -1349,7 +1349,7 @@ static u8 *handle_master_in(struct state *state)
 	u8 *msg = wire_sync_read(tmpctx, REQ_FD);
 	enum opening_wire_type t = fromwire_peektype(msg);
 	u8 channel_flags, *upfront_shutdown_script;
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	u16 funding_txout;
 
 	switch (t) {
@@ -1456,7 +1456,7 @@ int main(int argc, char *argv[])
 		tal_free(inner);
 	}
 
-	/*~ Even though I only care about bitcoin, there's still testnet and
+	/*~ Even though I only care about zcore, there's still testnet and
 	 * regtest modes, so we have a general "parameters for this chain"
 	 * function. */
 	state->chainparams = chainparams;

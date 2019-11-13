@@ -1,4 +1,4 @@
-#include "bitcoind.h"
+#include "zcored.h"
 #include "chaintopology.h"
 #include "gossip_control.h"
 #include "lightningd.h"
@@ -37,8 +37,8 @@
 #include <wire/gen_peer_wire.h>
 #include <wire/wire_sync.h>
 
-static void got_txout(struct bitcoind *bitcoind,
-		      const struct bitcoin_tx_output *output,
+static void got_txout(struct zcored *zcored,
+		      const struct zcore_tx_output *output,
 		      struct short_channel_id *scid)
 {
 	const u8 *script;
@@ -54,26 +54,26 @@ static void got_txout(struct bitcoind *bitcoind,
 	}
 
 	subd_send_msg(
-	    bitcoind->ld->gossip,
+	    zcored->ld->gossip,
 	    towire_gossip_get_txout_reply(scid, scid, sat, script));
 	tal_free(scid);
 }
 
-static void got_filteredblock(struct bitcoind *bitcoind,
+static void got_filteredblock(struct zcored *zcored,
 		      const struct filteredblock *fb,
 		      struct short_channel_id *scid)
 {
 	struct filteredblock_outpoint *fbo = NULL, *o;
-	struct bitcoin_tx_output txo;
+	struct zcore_tx_output txo;
 
 	/* If we failed to the filtered block we report the failure to
 	 * got_txout. */
 	if (fb == NULL)
-		return got_txout(bitcoind, NULL, scid);
+		return got_txout(zcored, NULL, scid);
 
 	/* Only fill in blocks that we are not going to scan later. */
-	if (bitcoind->ld->topology->max_blockheight > fb->height)
-		wallet_filteredblock_add(bitcoind->ld->wallet, fb);
+	if (zcored->ld->topology->max_blockheight > fb->height)
+		wallet_filteredblock_add(zcored->ld->wallet, fb);
 
 	u32 outnum = short_channel_id_outnum(scid);
 	u32 txindex = short_channel_id_txnum(scid);
@@ -88,9 +88,9 @@ static void got_filteredblock(struct bitcoind *bitcoind,
 	if (fbo) {
 		txo.amount = fbo->amount;
 		txo.script = (u8 *)fbo->scriptPubKey;
-		got_txout(bitcoind, &txo, scid);
+		got_txout(zcored, &txo, scid);
 	} else
-		got_txout(bitcoind, NULL, scid);
+		got_txout(zcored, NULL, scid);
 }
 
 static void get_txout(struct subd *gossip, const u8 *msg)
@@ -123,7 +123,7 @@ static void get_txout(struct subd *gossip, const u8 *msg)
 						   NULL, scid, AMOUNT_SAT(0), NULL)));
 		tal_free(scid);
 	} else {
-		bitcoind_getfilteredblock(topo->bitcoind, short_channel_id_blocknum(scid), got_filteredblock, scid);
+		zcored_getfilteredblock(topo->zcored, short_channel_id_blocknum(scid), got_filteredblock, scid);
 	}
 }
 

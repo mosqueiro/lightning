@@ -1,8 +1,8 @@
 #ifndef LIGHTNING_CHANNELD_COMMIT_TX_H
 #define LIGHTNING_CHANNELD_COMMIT_TX_H
 #include "config.h"
-#include <bitcoin/chainparams.h>
-#include <bitcoin/pubkey.h>
+#include <zcore/chainparams.h>
+#include <zcore/pubkey.h>
 #include <channeld/channeld_htlc.h>
 #include <common/htlc.h>
 #include <common/initial_commit_tx.h>
@@ -43,9 +43,9 @@ size_t commit_tx_num_untrimmed(const struct htlc **htlcs,
  * but the BOLT is expressed in terms of generating our local commitment
  * transaction, so we carefully use the terms "self" and "other" here.
  */
-struct bitcoin_tx *commit_tx(const tal_t *ctx,
+struct zcore_tx *commit_tx(const tal_t *ctx,
 			     const struct chainparams *chainparams,
-			     const struct bitcoin_txid *funding_txid,
+			     const struct zcore_txid *funding_txid,
 			     unsigned int funding_txout,
 			     struct amount_sat funding,
 			     enum side funder,

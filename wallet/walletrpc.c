@@ -1,6 +1,6 @@
-#include <bitcoin/address.h>
-#include <bitcoin/base58.h>
-#include <bitcoin/script.h>
+#include <zcore/address.h>
+#include <zcore/base58.h>
+#include <zcore/script.h>
 #include <ccan/cast/cast.h>
 #include <ccan/tal/str/str.h>
 #include <common/addr.h>
@@ -17,7 +17,7 @@
 #include <errno.h>
 #include <hsmd/gen_hsm_wire.h>
 #include <inttypes.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/hsm_control.h>
 #include <lightningd/json.h>
@@ -40,7 +40,7 @@
  * the used outputs as spent, and add the change output to our pool of
  * available outputs.
  */
-static void wallet_withdrawal_broadcast(struct bitcoind *bitcoind UNUSED,
+static void wallet_withdrawal_broadcast(struct zcored *zcored UNUSED,
 					int exitstatus, const char *msg,
 					struct unreleased_tx *utx)
 {
@@ -77,8 +77,8 @@ static void wallet_withdrawal_broadcast(struct bitcoind *bitcoind UNUSED,
 static struct command_result *broadcast_and_wait(struct command *cmd,
 						 struct unreleased_tx *utx)
 {
-	struct bitcoin_tx *signed_tx;
-	struct bitcoin_txid signed_txid;
+	struct zcore_tx *signed_tx;
+	struct zcore_txid signed_txid;
 
 	/* FIXME: hsm will sign almost anything, but it should really
 	 * fail cleanly (not abort!) and let us report the error here. */
@@ -86,7 +86,7 @@ static struct command_result *broadcast_and_wait(struct command *cmd,
 					     utx->wtx->amount,
 					     utx->wtx->change,
 					     utx->wtx->change_key_index,
-					     cast_const2(const struct bitcoin_tx_output **,
+					     cast_const2(const struct zcore_tx_output **,
 							 utx->outputs),
 					     utx->wtx->utxos);
 
@@ -102,8 +102,8 @@ static struct command_result *broadcast_and_wait(struct command *cmd,
 	signed_tx->chainparams = utx->tx->chainparams;
 
 	/* Sanity check */
-	bitcoin_txid(signed_tx, &signed_txid);
-	if (!bitcoin_txid_eq(&signed_txid, &utx->txid))
+	zcore_txid(signed_tx, &signed_txid);
+	if (!zcore_txid_eq(&signed_txid, &utx->txid))
 		fatal("HSM changed txid: unsigned %s, signed %s",
 		      tal_hex(tmpctx, linearize_tx(tmpctx, utx->tx)),
 		      tal_hex(tmpctx, linearize_tx(tmpctx, signed_tx)));
@@ -113,7 +113,7 @@ static struct command_result *broadcast_and_wait(struct command *cmd,
 	utx->tx = signed_tx;
 
 	/* Now broadcast the transaction */
-	bitcoind_sendrawtx(cmd->ld->topology->bitcoind,
+	zcored_sendrawtx(cmd->ld->topology->zcored,
 			   tal_hex(tmpctx, linearize_tx(tmpctx, signed_tx)),
 			   wallet_withdrawal_broadcast, utx);
 
@@ -135,7 +135,7 @@ static struct command_result *json_prepare_tx(struct command *cmd,
 	struct command_result *result;
 	u32 *minconf, maxheight;
 	struct pubkey *changekey;
-	struct bitcoin_tx_output **outputs;
+	struct zcore_tx_output **outputs;
 	const jsmntok_t *outputstok = NULL, *t;
 	const u8 *destination = NULL;
 	size_t out_len, i;
@@ -207,7 +207,7 @@ static struct command_result *json_prepare_tx(struct command *cmd,
 				 * *txprepare* 'destination' 'satoshi' ['feerate'] ['minconf'] */
 
 				/* destination (required) */
-				result = param_bitcoin_address(cmd, "destination", buffer,
+				result = param_zcore_address(cmd, "destination", buffer,
 							       firsttok, &destination);
 				if (result)
 					return result;
@@ -244,7 +244,7 @@ static struct command_result *json_prepare_tx(struct command *cmd,
 			const jsmntok_t *satoshitok = NULL;
 			if (!param(cmd, buffer, params,
 				   p_opt("outputs", param_array, &outputstok),
-				   p_opt("destination", param_bitcoin_address,
+				   p_opt("destination", param_zcore_address,
 					 &destination),
 				   p_opt("satoshi", param_tok, &satoshitok),
 				   p_opt("feerate", param_feerate, &feerate_per_kw),
@@ -269,7 +269,7 @@ static struct command_result *json_prepare_tx(struct command *cmd,
 	} else {
 		/* *withdraw* command still use 'destination' and 'satoshi' as parameters. */
 		if (!param(cmd, buffer, params,
-			   p_req("destination", param_bitcoin_address,
+			   p_req("destination", param_zcore_address,
 				 &destination),
 			   p_req("satoshi", param_wtx, (*utx)->wtx),
 			   p_opt("feerate", param_feerate, &feerate_per_kw),
@@ -291,8 +291,8 @@ static struct command_result *json_prepare_tx(struct command *cmd,
 	/* *withdraw* command or old *txprepare* command.
 	 * Support only one output. */
 	if (destination) {
-		outputs = tal_arr(tmpctx, struct bitcoin_tx_output *, 1);
-		outputs[0] = tal(outputs, struct bitcoin_tx_output);
+		outputs = tal_arr(tmpctx, struct zcore_tx_output *, 1);
+		outputs[0] = tal(outputs, struct zcore_tx_output);
 		outputs[0]->script = tal_steal(outputs[0],
 					       cast_const(u8 *, destination));
 		outputs[0]->amount = (*utx)->wtx->amount;
@@ -304,7 +304,7 @@ static struct command_result *json_prepare_tx(struct command *cmd,
 	if (outputstok->size == 0)
 		return command_fail(cmd, JSONRPC2_INVALID_PARAMS, "Empty outputs");
 
-	outputs = tal_arr(tmpctx, struct bitcoin_tx_output *, outputstok->size);
+	outputs = tal_arr(tmpctx, struct zcore_tx_output *, outputstok->size);
 	out_len = 0;
 	(*utx)->wtx->all_funds = false;
 	(*utx)->wtx->amount = AMOUNT_SAT(0);
@@ -338,12 +338,12 @@ static struct command_result *json_prepare_tx(struct command *cmd,
 					    t[2].end - t[2].start, buffer + t[2].start);
 
 		out_len += tal_count(destination);
-		outputs[i] = tal(outputs, struct bitcoin_tx_output);
+		outputs[i] = tal(outputs, struct zcore_tx_output);
 		outputs[i]->amount = *amount;
 		outputs[i]->script = tal_steal(outputs[i],
 					       cast_const(u8 *, destination));
 
-		/* In fact, the maximum amount of bitcoin satoshi is 2.1e15.
+		/* In fact, the maximum amount of zcore satoshi is 2.1e15.
 		 * It can't be equal to/bigger than 2^64.
 		 * On the hand, the maximum amount of litoshi is 8.4e15,
 		 * which also can't overflow. */
@@ -397,7 +397,7 @@ create_tx:
 				 changekey, (*utx)->wtx->change,
 				 cmd->ld->wallet->bip32_base,
 				 &(*utx)->change_outnum);
-	bitcoin_txid((*utx)->tx, &(*utx)->txid);
+	zcore_txid((*utx)->tx, &(*utx)->txid);
 
 	return NULL;
 }
@@ -426,7 +426,7 @@ static struct command_result *json_txprepare(struct command *cmd,
 }
 static const struct json_command txprepare_command = {
 	"txprepare",
-	"bitcoin",
+	"zcore",
 	json_txprepare,
 	"Create a transaction, with option to spend in future (either txsend and txdiscard)",
 	false
@@ -440,7 +440,7 @@ static struct command_result *param_unreleased_txid(struct command *cmd,
 						    struct unreleased_tx **utx)
 {
 	struct command_result *res;
-	struct bitcoin_txid *txid;
+	struct zcore_txid *txid;
 
 	res = param_txid(cmd, name, buffer, tok, &txid);
 	if (res)
@@ -450,7 +450,7 @@ static struct command_result *param_unreleased_txid(struct command *cmd,
 	if (!*utx)
 		return command_fail(cmd, LIGHTNINGD,
 				    "%s not an unreleased txid",
-				    type_to_string(cmd, struct bitcoin_txid,
+				    type_to_string(cmd, struct zcore_txid,
 						   txid));
 	tal_free(txid);
 	return NULL;
@@ -484,7 +484,7 @@ static struct command_result *json_txsend(struct command *cmd,
 
 static const struct json_command txsend_command = {
 	"txsend",
-	"bitcoin",
+	"zcore",
 	json_txsend,
 	"Sign and broadcast a transaction created by txprepare",
 	false
@@ -515,7 +515,7 @@ static struct command_result *json_txdiscard(struct command *cmd,
 
 static const struct json_command txdiscard_command = {
 	"txdiscard",
-	"bitcoin",
+	"zcore",
 	json_txdiscard,
 	"Abandon a transaction created by txprepare",
 	false
@@ -551,9 +551,9 @@ static struct command_result *json_withdraw(struct command *cmd,
 
 static const struct json_command withdraw_command = {
 	"withdraw",
-	"bitcoin",
+	"zcore",
 	json_withdraw,
-	"Send to {destination} address {satoshi} (or 'all') amount via Bitcoin "
+	"Send to {destination} address {satoshi} (or 'all') amount via ZCore "
 	"transaction, at optional {feerate}",
 	false,
 	"Send funds from the internal wallet to the specified address. Either "
@@ -582,7 +582,7 @@ encode_pubkey_to_addr(const tal_t *ctx,
 	bool ok;
 
 	if (is_p2sh_p2wpkh) {
-		redeemscript = bitcoin_redeem_p2sh_p2wpkh(ctx, pubkey);
+		redeemscript = zcore_redeem_p2sh_p2wpkh(ctx, pubkey);
 		sha256(&h, redeemscript, tal_count(redeemscript));
 		ripemd160(&h160, h.u.u8, sizeof(h));
 		out = p2sh_to_base58(ctx,
@@ -694,7 +694,7 @@ static struct command_result *json_newaddr(struct command *cmd,
 
 static const struct json_command newaddr_command = {
 	"newaddr",
-	"bitcoin",
+	"zcore",
 	json_newaddr,
 	"Get a new {bech32, p2sh-segwit} (or all) address to fund a channel (default is bech32)", false,
 	"Generates a new address (or both) that belongs to the internal wallet. Funds sent to these addresses will be managed by lightningd. Use `withdraw` to withdraw funds to an external wallet."
@@ -884,8 +884,8 @@ struct txo_rescan {
 	struct json_stream *response;
 };
 
-static void process_utxo_result(struct bitcoind *bitcoind,
-				const struct bitcoin_tx_output *txout,
+static void process_utxo_result(struct zcored *zcored,
+				const struct zcore_tx_output *txout,
 				void *arg)
 {
 	struct txo_rescan *rescan = arg;
@@ -900,7 +900,7 @@ static void process_utxo_result(struct bitcoind *bitcoind,
 	json_add_num(response, "oldstate", u->status);
 	json_add_num(response, "newstate", newstate);
 	json_object_end(rescan->response);
-	wallet_update_output_status(bitcoind->ld->wallet, &u->txid, u->outnum,
+	wallet_update_output_status(zcored->ld->wallet, &u->txid, u->outnum,
 				    u->status, newstate);
 
 	/* Remove the utxo we just resolved */
@@ -912,8 +912,8 @@ static void process_utxo_result(struct bitcoind *bitcoind,
 		json_array_end(rescan->response);
 		was_pending(command_success(rescan->cmd, rescan->response));
 	} else {
-		bitcoind_gettxout(
-		    bitcoind->ld->topology->bitcoind, &rescan->utxos[0]->txid,
+		zcored_gettxout(
+		    zcored->ld->topology->zcored, &rescan->utxos[0]->txid,
 		    rescan->utxos[0]->outnum, process_utxo_result, rescan);
 	}
 }
@@ -938,7 +938,7 @@ static struct command_result *json_dev_rescan_outputs(struct command *cmd,
 		json_array_end(rescan->response);
 		return command_success(cmd, rescan->response);
 	}
-	bitcoind_gettxout(cmd->ld->topology->bitcoind, &rescan->utxos[0]->txid,
+	zcored_gettxout(cmd->ld->topology->zcored, &rescan->utxos[0]->txid,
 			  rescan->utxos[0]->outnum, process_utxo_result,
 			  rescan);
 	return command_still_pending(cmd);
@@ -948,9 +948,9 @@ static const struct json_command dev_rescan_output_command = {
 	"dev-rescan-outputs",
 	"developer",
 	json_dev_rescan_outputs,
-	"Synchronize the state of our funds with bitcoind",
+	"Synchronize the state of our funds with zcored",
 	false,
-	"For each output stored in the internal wallet ask `bitcoind` whether we are in sync with its state (spent vs. unspent)"
+	"For each output stored in the internal wallet ask `zcored` whether we are in sync with its state (spent vs. unspent)"
 };
 AUTODATA(json_command, &dev_rescan_output_command);
 
@@ -1034,10 +1034,10 @@ static void json_transaction_details(struct json_stream *response,
 		json_array_start(response, "outputs");
 		for (size_t i = 0; i < wtx->num_outputs; i++) {
 			struct wally_tx_output *out = &wtx->outputs[i];
-			struct amount_asset amt = bitcoin_tx_output_get_amount(tx->tx, i);
+			struct amount_asset amt = zcore_tx_output_get_amount(tx->tx, i);
 			struct amount_sat sat;
 
-			/* TODO We should eventually handle non-bitcoin assets as well. */
+			/* TODO We should eventually handle non-zcore assets as well. */
 			if (amount_asset_is_main(&amt))
 				sat = amount_asset_to_sat(&amt);
 			else

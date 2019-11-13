@@ -6,9 +6,9 @@
  *
  * lightning/devtools/mkfunding 16835ac8c154b616baac524163f41fb0c4f82c7b972ad35d4d6f18d854f6856b 3 0.03btc 253 16c5027616e940d1e72b4c172557b3b799a93c0582f924441174ea556aadd01c 0000000000000000000000000000000000000000000000000000000000000050 0000000000000000000000000000000000000000000000000000000000000060
  */
-#include <bitcoin/address.h>
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/address.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/err/err.h>
 #include <ccan/str/hex/hex.h>
 #include <common/amount.h>
@@ -25,7 +25,7 @@ void status_fmt(enum log_level level, const char *fmt, ...)
 {
 }
 
-static char *sig_as_hex(const struct bitcoin_signature *sig)
+static char *sig_as_hex(const struct zcore_signature *sig)
 {
 	u8 compact_sig[64];
 
@@ -43,14 +43,14 @@ int main(int argc, char *argv[])
 	struct amount_sat fee, funding_amount;
 	unsigned int feerate_per_kw;
 	int argnum;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	u16 outnum;
 	size_t weight;
 	struct utxo input;
 	const struct utxo **utxomap;
-	struct bitcoin_signature sig;
-	struct bitcoin_txid txid;
-	const struct chainparams *chainparams = chainparams_for_network("bitcoin");
+	struct zcore_signature sig;
+	struct zcore_txid txid;
+	const struct chainparams *chainparams = chainparams_for_network("zcore");
 	u8 **witnesses;
 
 	setup_locale();
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	input.close_info = NULL;
 
 	argnum = 1;
-	if (!bitcoin_txid_from_hex(argv[argnum],
+	if (!zcore_txid_from_hex(argv[argnum],
 				   strlen(argv[argnum]), &input.txid))
 		errx(1, "Bad input-txid");
 	argnum++;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	/* Add segwit fields: marker + flag */
 	weight += 1 + 1;
 	/* Single output: Satoshis, script length, p2wsh. */
-	weight += 4 * (8 + 1 + BITCOIN_SCRIPTPUBKEY_P2WSH_LEN);
+	weight += 4 * (8 + 1 + ZCORE_SCRIPTPUBKEY_P2WSH_LEN);
 	/* Single input: txid, index, scriptlen, nSequence */
 	weight += 4 * (32 + 4 + 1 + 4);
 	/* Single witness: witness element count, len[0], sig, len[2], key */
@@ -119,12 +119,12 @@ int main(int argc, char *argv[])
 			AMOUNT_SAT(0), NULL, NULL);
 
 	/* P2WSH of inputkey */
-	bitcoin_tx_input_set_script(tx, 0, NULL);
+	zcore_tx_input_set_script(tx, 0, NULL);
 	sign_tx_input(tx, 0, NULL, p2wpkh_scriptcode(NULL, &inputkey),
 		      &input_privkey, &inputkey,
 		      SIGHASH_ALL, &sig);
-	witnesses = bitcoin_witness_p2wpkh(NULL, &sig, &inputkey);
-	bitcoin_tx_input_set_witness(tx, 0, witnesses);
+	witnesses = zcore_witness_p2wpkh(NULL, &sig, &inputkey);
+	zcore_tx_input_set_witness(tx, 0, witnesses);
 
 	printf("# funding sig: %s\n", sig_as_hex(&sig));
 	printf("# funding witnesses: [\n");
@@ -134,9 +134,9 @@ int main(int argc, char *argv[])
  	printf("# funding amount: %s\n",
 	       type_to_string(NULL, struct amount_sat, &funding_amount));
 
-	bitcoin_txid(tx, &txid);
+	zcore_txid(tx, &txid);
  	printf("# funding txid: %s\n",
-	       type_to_string(NULL, struct bitcoin_txid, &txid));
+	       type_to_string(NULL, struct zcore_txid, &txid));
 
 	printf("tx: %s\n", tal_hex(NULL, linearize_tx(NULL, tx)));
 

@@ -130,7 +130,7 @@ def test_pay_limits(node_factory):
     assert status[0]['strategy'] == "Initial attempt"
 
 
-def test_pay_exclude_node(node_factory, bitcoind):
+def test_pay_exclude_node(node_factory, zcored):
     """Test excluding the node if there's the NODE-level error in the failure_code
     """
     # FIXME: Remove our reliance on HTLCs failing on startup and the need for
@@ -164,7 +164,7 @@ def test_pay_exclude_node(node_factory, bitcoind):
     scid14 = l1.fund_channel(l4, 10**6, wait_for_active=False)
     scid45 = l4.fund_channel(l5, 10**6, wait_for_active=False)
     scid53 = l5.fund_channel(l3, 10**6, wait_for_active=False)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     l1.daemon.wait_for_logs([r'update for channel {}/0 now ACTIVE'
                              .format(scid14),
@@ -220,7 +220,7 @@ def test_pay0(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_pay_disconnect(node_factory, bitcoind):
+def test_pay_disconnect(node_factory, zcored):
     """If the remote node has disconnected, we fail payment, but can try again when it reconnects"""
     l1, l2 = node_factory.line_graph(2, opts={'dev-max-fee-multiplier': 5,
                                               'may_reconnect': True})
@@ -256,7 +256,7 @@ def test_pay_disconnect(node_factory, bitcoind):
     assert not l1.daemon.is_in_log('Payment is still in progress')
 
     # After it sees block, someone should close channel.
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('ONCHAIN')
 
 
@@ -317,7 +317,7 @@ def test_pay_optional_args(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "needs to deactivate shadow routing")
-def test_payment_success_persistence(node_factory, bitcoind, executor):
+def test_payment_success_persistence(node_factory, zcored, executor):
     # Start two nodes and open a channel.. die during payment.
     # Feerates identical so we don't get gratuitous commit to update them
     l1 = node_factory.get_node(disconnect=['+WIRE_COMMITMENT_SIGNED'],
@@ -567,7 +567,7 @@ def test_sendpay(node_factory):
     assert payments[0]['payment_preimage'] == preimage3
 
 
-@unittest.skipIf(TEST_NETWORK != 'regtest', "The reserve computation is bitcoin specific")
+@unittest.skipIf(TEST_NETWORK != 'regtest', "The reserve computation is zcore specific")
 def test_sendpay_cant_afford(node_factory):
     l1, l2 = node_factory.line_graph(2, fundamount=10**6)
 
@@ -614,7 +614,7 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lnbc`: prefix, lightning on bitcoin mainnet
+    # * `lnbc`: prefix, lightning on zcore mainnet
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash
@@ -644,8 +644,8 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lnbc`: prefix, lightning on bitcoin mainnet
-    # * `2500u`: amount (2500 micro-bitcoin)
+    # * `lnbc`: prefix, lightning on zcore mainnet
+    # * `2500u`: amount (2500 micro-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -678,8 +678,8 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lnbc`: prefix, lightning on bitcoin mainnet
-    # * `20m`: amount (20 milli-bitcoin)
+    # * `lnbc`: prefix, lightning on zcore mainnet
+    # * `20m`: amount (20 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -710,8 +710,8 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lntb`: prefix, lightning on bitcoin testnet
-    # * `20m`: amount (20 milli-bitcoin)
+    # * `lntb`: prefix, lightning on zcore testnet
+    # * `20m`: amount (20 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -746,8 +746,8 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lnbc`: prefix, lightning on bitcoin mainnet
-    # * `20m`: amount (20 milli-bitcoin)
+    # * `lnbc`: prefix, lightning on zcore mainnet
+    # * `20m`: amount (20 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -793,8 +793,8 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lnbc`: prefix, lightning on bitcoin mainnet
-    # * `20m`: amount (20 milli-bitcoin)
+    # * `lnbc`: prefix, lightning on zcore mainnet
+    # * `20m`: amount (20 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -819,8 +819,8 @@ def test_decodepay(node_factory):
     # > ### On mainnet, with fallback (P2WPKH) address bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
     # > lnbc20m1pvjluezhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfppqw508d6qejxtdg4y5r3zarvary0c5xw7kepvrhrm9s57hejg0p662ur5j5cr03890fa7k2pypgttmh4897d3raaq85a293e9jpuqwl0rnfuwzam7yr8e690nd2ypcq9hlkdwdvycqa0qza8
     #
-    # * `lnbc`: prefix, lightning on bitcoin mainnet
-    # * `20m`: amount (20 milli-bitcoin)
+    # * `lnbc`: prefix, lightning on zcore mainnet
+    # * `20m`: amount (20 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -846,8 +846,8 @@ def test_decodepay(node_factory):
     # > ### On mainnet, with fallback (P2WSH) address bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3
     # > lnbc20m1pvjluezhp58yjmdan79s6qqdhdzgynm4zwqd5d7xmw5fk98klysy043l2ahrqspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqfp4qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q28j0v3rwgy9pvjnd48ee2pl8xrpxysd5g44td63g6xcjcu003j3qe8878hluqlvl3km8rm92f5stamd3jw763n3hck0ct7p8wwj463cql26ava
     #
-    # * `lnbc`: prefix, lightning on bitcoin mainnet
-    # * `20m`: amount (20 milli-bitcoin)
+    # * `lnbc`: prefix, lightning on zcore mainnet
+    # * `20m`: amount (20 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -875,8 +875,8 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lnbc`: prefix, Lightning on Bitcoin mainnet
-    # * `25m`: amount (25 milli-bitcoin)
+    # * `lnbc`: prefix, Lightning on ZCore mainnet
+    # * `25m`: amount (25 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -904,8 +904,8 @@ def test_decodepay(node_factory):
     #
     # Breakdown:
     #
-    # * `lnbc`: prefix, Lightning on Bitcoin mainnet
-    # * `25m`: amount (25 milli-bitcoin)
+    # * `lnbc`: prefix, Lightning on ZCore mainnet
+    # * `25m`: amount (25 milli-zcore)
     # * `1`: Bech32 separator
     # * `pvjluez`: timestamp (1496314658)
     # * `p`: payment hash...
@@ -925,15 +925,15 @@ def test_decodepay(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "Too slow without --dev-fast-gossip")
-def test_forward(node_factory, bitcoind):
+def test_forward(node_factory, zcored):
     # Connect 1 -> 2 -> 3.
     l1, l2, l3 = node_factory.line_graph(3, fundchannel=True)
 
     # Allow announce messages.
-    l1.bitcoin.generate_block(5)
+    l1.zcore.generate_block(5)
 
     # If they're at different block heights we can get spurious errors.
-    sync_blockheight(bitcoind, [l1, l2, l3])
+    sync_blockheight(zcored, [l1, l2, l3])
 
     chanid1 = only_one(l1.rpc.getpeer(l2.info['id'])['channels'])['short_channel_id']
     chanid2 = only_one(l2.rpc.getpeer(l3.info['id'])['channels'])['short_channel_id']
@@ -984,7 +984,7 @@ def test_forward(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs --dev-fast-gossip")
-def test_forward_different_fees_and_cltv(node_factory, bitcoind):
+def test_forward_different_fees_and_cltv(node_factory, zcored):
     # FIXME: Check BOLT quotes here too
     # BOLT #7:
     # ```
@@ -1035,7 +1035,7 @@ def test_forward_different_fees_and_cltv(node_factory, bitcoind):
 
     c1 = l1.fund_channel(l2, 10**6)
     c2 = l2.fund_channel(l3, 10**6)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make sure l1 has seen announce for all channels.
     l1.wait_channel_active(c1)
@@ -1101,9 +1101,9 @@ def test_forward_different_fees_and_cltv(node_factory, bitcoind):
     # We add one to the blockcount for a bit of fuzz (FIXME: Shadowroute would fix this!)
     shadow_route = 1
     l1.daemon.wait_for_log("Adding HTLC 0 amount=5010198msat cltv={} gave CHANNEL_ERR_ADD_OK"
-                           .format(bitcoind.rpc.getblockcount() + 20 + 9 + shadow_route))
+                           .format(zcored.rpc.getblockcount() + 20 + 9 + shadow_route))
     l2.daemon.wait_for_log("Adding HTLC 0 amount=4999999msat cltv={} gave CHANNEL_ERR_ADD_OK"
-                           .format(bitcoind.rpc.getblockcount() + 9 + shadow_route))
+                           .format(zcored.rpc.getblockcount() + 9 + shadow_route))
     l3.daemon.wait_for_log("Resolved invoice 'test_forward_different_fees_and_cltv' with amount 4999999msat")
     assert only_one(l3.rpc.listinvoices('test_forward_different_fees_and_cltv')['invoices'])['status'] == 'paid'
 
@@ -1120,7 +1120,7 @@ def test_forward_different_fees_and_cltv(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "too slow without --dev-fast-gossip")
-def test_forward_pad_fees_and_cltv(node_factory, bitcoind):
+def test_forward_pad_fees_and_cltv(node_factory, zcored):
     """Test that we are allowed extra locktime delta, and fees"""
 
     l1 = node_factory.get_node(options={'cltv-delta': 10, 'fee-base': 100, 'fee-per-satoshi': 1000})
@@ -1141,7 +1141,7 @@ def test_forward_pad_fees_and_cltv(node_factory, bitcoind):
 
     c1 = l1.fund_channel(l2, 10**6)
     c2 = l2.fund_channel(l3, 10**6)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make sure l1 has seen announce for all channels.
     l1.wait_channel_active(c1)
@@ -1171,7 +1171,7 @@ def test_forward_pad_fees_and_cltv(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1 for dev_ignore_htlcs")
-def test_forward_stats(node_factory, bitcoind):
+def test_forward_stats(node_factory, zcored):
     """Check that we track forwarded payments correctly.
 
     We wire up the network to have l1 as payment initiator, l2 as
@@ -1187,7 +1187,7 @@ def test_forward_stats(node_factory, bitcoind):
     l2.openchannel(l4, 10**6, wait_for_announce=False)
     l2.openchannel(l5, 10**6, wait_for_announce=True)
 
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     wait_for(lambda: len(l1.rpc.listchannels()['channels']) == 8)
 
@@ -1249,7 +1249,7 @@ def test_forward_stats(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER or (VALGRIND and SLOW_MACHINE), "Gossip too slow without DEVELOPER, and too stressful if VALGRIND on slow machines")
-def test_forward_local_failed_stats(node_factory, bitcoind, executor):
+def test_forward_local_failed_stats(node_factory, zcored, executor):
     """Check that we track forwarded payments correctly.
 
     We wire up the network to have l1 and l6 as payment initiator, l2 as
@@ -1311,7 +1311,7 @@ def test_forward_local_failed_stats(node_factory, bitcoind, executor):
     l6.fund_channel(l1, 10**6)
 
     # Make sure routes finalized.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     l1.wait_channel_active(c23)
     l1.wait_channel_active(c24)
     l1.wait_channel_active(c25)
@@ -1433,23 +1433,23 @@ def test_forward_local_failed_stats(node_factory, bitcoind, executor):
 
     l4.daemon.wait_for_log('permfail')
     l4.wait_for_channel_onchain(l2.info['id'])
-    l2.bitcoin.generate_block(1)
+    l2.zcore.generate_block(1)
     l2.daemon.wait_for_log(' to ONCHAIN')
     l4.daemon.wait_for_log(' to ONCHAIN')
 
     # Wait for timeout.
     l2.daemon.wait_for_log('Propose handling THEIR_UNILATERAL/OUR_HTLC by OUR_HTLC_TIMEOUT_TO_US .* after 6 blocks')
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
 
     l2.wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                    'THEIR_UNILATERAL/OUR_HTLC')
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l2.daemon.wait_for_log('Resolved THEIR_UNILATERAL/OUR_HTLC by our proposal OUR_HTLC_TIMEOUT_TO_US')
     l4.daemon.wait_for_log('Ignoring output.*: OUR_UNILATERAL/THEIR_HTLC')
 
-    bitcoind.generate_block(100)
-    sync_blockheight(bitcoind, [l2])
+    zcored.generate_block(100)
+    sync_blockheight(zcored, [l2])
 
     # give time to let l2 store the local_failed stats
     time.sleep(5)
@@ -1468,7 +1468,7 @@ def test_forward_local_failed_stats(node_factory, bitcoind, executor):
 
 
 @unittest.skipIf(not DEVELOPER or SLOW_MACHINE, "needs DEVELOPER=1 for dev_ignore_htlcs, and temporarily disabled on Travis")
-def test_htlcs_cltv_only_difference(node_factory, bitcoind):
+def test_htlcs_cltv_only_difference(node_factory, zcored):
     # l1 -> l2 -> l3 -> l4
     # l4 ignores htlcs, so they stay.
     # l3 will see a reconnect from l4 when l4 restarts.
@@ -1482,16 +1482,16 @@ def test_htlcs_cltv_only_difference(node_factory, bitcoind):
     l2.rpc.sendpay(r, h)
 
     # Now increment CLTV
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, [l1, l2, l3, l4])
+    zcored.generate_block(1)
+    sync_blockheight(zcored, [l1, l2, l3, l4])
 
     # L1 tries to pay
     r = l1.rpc.getroute(l4.info['id'], 10**8, 1)["route"]
     l1.rpc.sendpay(r, h)
 
     # Now increment CLTV
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, [l1, l2, l3, l4])
+    zcored.generate_block(1)
+    sync_blockheight(zcored, [l1, l2, l3, l4])
 
     # L3 tries to pay
     r = l3.rpc.getroute(l4.info['id'], 10**8, 1)["route"]
@@ -1545,7 +1545,7 @@ def test_pay_variants(node_factory):
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
 @unittest.skipIf(VALGRIND and SLOW_MACHINE, "Travis times out under valgrind")
-def test_pay_retry(node_factory, bitcoind):
+def test_pay_retry(node_factory, zcored):
     """Make sure pay command retries properly. """
     def exhaust_channel(funder, fundee, scid, already_spent=0):
         """Spend all available capacity (10^6 - 1%) of channel"""
@@ -1583,7 +1583,7 @@ def test_pay_retry(node_factory, bitcoind):
     scid35 = l3.fund_channel(l5, 10**6, wait_for_active=False)
 
     # Make sure l1 sees all 7 channels
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     wait_for(lambda: len(l1.rpc.listchannels()['channels']) == 14)
 
     # Exhaust shortcut channels one at a time, to force retries.
@@ -1625,7 +1625,7 @@ def test_pay_retry(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1 otherwise gossip takes 5 minutes!")
-def test_pay_routeboost(node_factory, bitcoind):
+def test_pay_routeboost(node_factory, zcored):
     """Make sure we can use routeboost information. """
     # l1->l2->l3--private-->l4
     l1, l2 = node_factory.line_graph(2, announce_channels=True, wait_for_announce=True)
@@ -1639,7 +1639,7 @@ def test_pay_routeboost(node_factory, bitcoind):
     scidl2l3 = l2.fund_channel(l3, 10**6)
 
     # Make sure l1 knows about the 2->3 channel.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     l1.daemon.wait_for_logs([r'update for channel {}/0 now ACTIVE'
                              .format(scidl2l3),
                              r'update for channel {}/1 now ACTIVE'
@@ -1753,7 +1753,7 @@ def test_pay_routeboost(node_factory, bitcoind):
 
 @flaky
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_pay_direct(node_factory, bitcoind):
+def test_pay_direct(node_factory, zcored):
     """Check that we prefer the direct route.
     """
     # l2->l3 is really cheap by comparison.
@@ -1787,10 +1787,10 @@ def test_pay_direct(node_factory, bitcoind):
     c3 = l2.fund_channel(l3, 10**7, wait_for_active=False)
 
     # Let channels lock in.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make l1 sees it, so it doesn't produce bad CLTVs.
-    sync_blockheight(bitcoind, [l1])
+    sync_blockheight(zcored, [l1])
 
     # Make sure l0 knows the l2->l3 channel.
     # Without DEVELOPER, channel lockin can take 30 seconds to detect,
@@ -1815,7 +1815,7 @@ def test_pay_direct(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "updates are delayed without --dev-fast-gossip")
-def test_setchannelfee_usage(node_factory, bitcoind):
+def test_setchannelfee_usage(node_factory, zcored):
     # TEST SETUP
     #
     # [l1] ---> [l2]  (channel funded)
@@ -1941,7 +1941,7 @@ def test_setchannelfee_usage(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_setchannelfee_state(node_factory, bitcoind):
+def test_setchannelfee_state(node_factory, zcored):
     # TEST SETUP
     #
     # [l0] --> [l1] --> [l2]
@@ -1969,7 +1969,7 @@ def test_setchannelfee_state(node_factory, bitcoind):
     # cid = result['channels'][0]['channel_id']
 
     # test routing correct new fees once routing is established
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
     l0.wait_for_route(l2)
     inv = l2.rpc.invoice(100000, 'test_setchannelfee_state', 'desc')['bolt11']
     result = l0.rpc.dev_pay(inv, use_shadow=False)
@@ -1982,9 +1982,9 @@ def test_setchannelfee_state(node_factory, bitcoind):
     result = l2.rpc.close(scid, 1)
     assert result['type'] == 'unilateral'
 
-    # wait for l1 to see unilateral close via bitcoin network
+    # wait for l1 to see unilateral close via zcore network
     while l1.channel_state(l2) == "CHANNELD_NORMAL":
-        bitcoind.generate_block(1)
+        zcored.generate_block(1)
     # assert l1.channel_state(l2) == "FUNDING_SPEND_SEEN"
 
     # Try to setchannelfee in order to raise expected error.
@@ -1995,7 +1995,7 @@ def test_setchannelfee_state(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_setchannelfee_routing(node_factory, bitcoind):
+def test_setchannelfee_routing(node_factory, zcored):
     # TEST SETUP
     #
     # [l1] <--default_fees--> [l2] <--specific_fees--> [l3]
@@ -2063,7 +2063,7 @@ def test_setchannelfee_routing(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_setchannelfee_zero(node_factory, bitcoind):
+def test_setchannelfee_zero(node_factory, zcored):
     # TEST SETUP
     #
     # [l1] <--default_fees--> [l2] <--specific_fees--> [l3]
@@ -2100,7 +2100,7 @@ def test_setchannelfee_zero(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_setchannelfee_restart(node_factory, bitcoind):
+def test_setchannelfee_restart(node_factory, zcored):
     # TEST SETUP
     #
     # [l1] <--default_fees--> [l2] <--specific_fees--> [l3]
@@ -2142,7 +2142,7 @@ def test_setchannelfee_restart(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "updates are delayed without --dev-fast-gossip")
-def test_setchannelfee_all(node_factory, bitcoind):
+def test_setchannelfee_all(node_factory, zcored):
     # TEST SETUP
     #
     # [l1]----> [l2]
@@ -2181,7 +2181,7 @@ def test_setchannelfee_all(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_channel_spendable(node_factory, bitcoind):
+def test_channel_spendable(node_factory, zcored):
     """Test that spendable_msat is accurate"""
     sats = 10**6
     l1, l2 = node_factory.line_graph(2, fundamount=sats, wait_for_announce=True,
@@ -2234,7 +2234,7 @@ def test_channel_spendable(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_channel_spendable_large(node_factory, bitcoind):
+def test_channel_spendable_large(node_factory, zcored):
     """Test that spendable_msat is accurate for large channels"""
     # This is almost the max allowable spend.
     sats = 4294967
@@ -2259,15 +2259,15 @@ def test_channel_spendable_large(node_factory, bitcoind):
     l1.rpc.waitsendpay(payment_hash, TIMEOUT)
 
 
-def test_channel_spendable_capped(node_factory, bitcoind):
+def test_channel_spendable_capped(node_factory, zcored):
     """Test that spendable_msat is capped at 2^32-1"""
     sats = 16777215
     l1, l2 = node_factory.line_graph(2, fundamount=sats, wait_for_announce=False)
     assert l1.rpc.listpeers()['peers'][0]['channels'][0]['spendable_msat'] == Millisatoshi(0xFFFFFFFF)
 
 
-@unittest.skipIf(TEST_NETWORK != 'regtest', 'The numbers below are bitcoin specific')
-def test_channel_drainage(node_factory, bitcoind):
+@unittest.skipIf(TEST_NETWORK != 'regtest', 'The numbers below are zcore specific')
+def test_channel_drainage(node_factory, zcored):
     """Test channel drainage.
 
     Test to drains a channels as much as possible,
@@ -2324,7 +2324,7 @@ def test_channel_drainage(node_factory, bitcoind):
     l2.rpc.waitsendpay(payment_hash, TIMEOUT)
 
 
-def test_error_returns_blockheight(node_factory, bitcoind):
+def test_error_returns_blockheight(node_factory, zcored):
     """Test that incorrect_or_unknown_payment_details returns block height"""
     l1, l2 = node_factory.line_graph(2)
 
@@ -2343,7 +2343,7 @@ def test_error_returns_blockheight(node_factory, bitcoind):
     #    * [`u64`:`htlc_msat`]
     #    * [`u32`:`height`]
     assert (err.value.error['data']['raw_message']
-            == '400f{:016x}{:08x}'.format(100, bitcoind.rpc.getblockcount()))
+            == '400f{:016x}{:08x}'.format(100, zcored.rpc.getblockcount()))
 
 
 @flaky

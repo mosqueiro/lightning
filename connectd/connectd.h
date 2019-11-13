@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_CONNECTD_CONNECTD_H
 #define LIGHTNING_CONNECTD_CONNECTD_H
 #include "config.h"
-#include <bitcoin/pubkey.h>
+#include <zcore/pubkey.h>
 #include <common/crypto_state.h>
 
 struct io_conn;

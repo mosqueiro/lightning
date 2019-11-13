@@ -1,14 +1,14 @@
 #ifndef LIGHTNING_COMMON_HTLC_WIRE_H
 #define LIGHTNING_COMMON_HTLC_WIRE_H
 #include "config.h"
-#include <bitcoin/preimage.h>
+#include <zcore/preimage.h>
 #include <ccan/short_types/short_types.h>
 #include <common/amount.h>
 #include <common/htlc.h>
 #include <common/sphinx.h>
 #include <wire/gen_onion_wire.h>
 
-struct bitcoin_tx;
+struct zcore_tx;
 struct shachain;
 
 /* These are how we communicate about HTLC state to the master daemon */

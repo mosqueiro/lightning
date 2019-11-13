@@ -14,7 +14,7 @@ else
     exit 1
 fi
 
-if ! $LCLI "$@" -H getinfo | grep 'network=bitcoin'; then
+if ! $LCLI "$@" -H getinfo | grep 'network=zcore'; then
     echo "lightningd not running, or not on mainnet?" >&2
     exit 1
 fi

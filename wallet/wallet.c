@@ -1,7 +1,7 @@
 #include "invoices.h"
 #include "wallet.h"
 
-#include <bitcoin/script.h>
+#include <zcore/script.h>
 #include <ccan/mem/mem.h>
 #include <ccan/tal/str/str.h>
 #include <common/key_derive.h>
@@ -27,7 +27,7 @@ static void outpointfilters_init(struct wallet *w)
 {
 	struct db_stmt *stmt;
 	struct utxo **utxos = wallet_get_utxos(NULL, w, output_state_any);
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	u32 outnum;
 
 	w->owned_outpoints = outpointfilter_new(w);
@@ -195,7 +195,7 @@ static struct utxo *wallet_stmt2output(const tal_t *ctx, struct db_stmt *stmt)
 }
 
 bool wallet_update_output_status(struct wallet *w,
-				 const struct bitcoin_txid *txid,
+				 const struct zcore_txid *txid,
 				 const u32 outnum, enum output_status oldstatus,
 				 enum output_status newstatus)
 {
@@ -369,12 +369,12 @@ static const struct utxo **wallet_select(const tal_t *ctx, struct wallet *w,
 
 	/* Change output will be P2WPKH */
 	if (may_have_change)
-		weight += (8 + 1 + BITCOIN_SCRIPTPUBKEY_P2WPKH_LEN) * 4;
+		weight += (8 + 1 + ZCORE_SCRIPTPUBKEY_P2WPKH_LEN) * 4;
 
 	/* A couple of things need to change for elements: */
 	if (chainparams->is_elements) {
                 /* Each transaction has surjection and rangeproof (both empty
-		 * for us as long as we use unblinded L-BTC transactions). */
+		 * for us as long as we use unblinded L-ZCR transactions). */
 		weight += 2 * 4;
 
 		/* Each output additionally has an asset_tag (1 + 32), value
@@ -383,7 +383,7 @@ static const struct utxo **wallet_select(const tal_t *ctx, struct wallet *w,
 		weight += (32 + 1 + 1 + 1) * 4 * num_outputs;
 
 		/* An elements transaction has 1 additional output for fees */
-		weight += (8 + 1) * 4; /* Bitcoin style output */
+		weight += (8 + 1) * 4; /* ZCore style output */
 		weight += (32 + 1 + 1 + 1) * 4; /* Elements added fields */
 	}
 
@@ -481,7 +481,7 @@ const struct utxo **wallet_select_coins(const tal_t *ctx, struct wallet *w,
 }
 
 const struct utxo **wallet_select_specific(const tal_t *ctx, struct wallet *w,
-					struct bitcoin_txid **txids,
+					struct zcore_txid **txids,
                     u32 **outnums)
 {
 	size_t i, j;
@@ -493,7 +493,7 @@ const struct utxo **wallet_select_specific(const tal_t *ctx, struct wallet *w,
 	for (i = 0; i < tal_count(txids); i++) {
 		for (j = 0; j < tal_count(available); j++) {
 
-			if (bitcoin_txid_eq(&available[j]->txid, txids[i])
+			if (zcore_txid_eq(&available[j]->txid, txids[i])
 					&& available[j]->outnum == *outnums[i]) {
 				struct utxo *u = tal_steal(utxos, available[j]);
 				tal_arr_expand(&utxos, u);
@@ -764,12 +764,12 @@ wallet_htlc_sigs_load(const tal_t *ctx, struct wallet *w, u64 channelid)
 
 bool wallet_remote_ann_sigs_load(const tal_t *ctx, struct wallet *w, u64 id,
 				 secp256k1_ecdsa_signature **remote_ann_node_sig,
-				 secp256k1_ecdsa_signature **remote_ann_bitcoin_sig)
+				 secp256k1_ecdsa_signature **remote_ann_zcore_sig)
 {
 	struct db_stmt *stmt;
 	bool res;
 	stmt = db_prepare_v2(
-	    w->db, SQL("SELECT remote_ann_node_sig, remote_ann_bitcoin_sig"
+	    w->db, SQL("SELECT remote_ann_node_sig, remote_ann_zcore_sig"
 		       " FROM channels WHERE id = ?"));
 	db_bind_u64(stmt, 0, id);
 	db_query_prepared(stmt);
@@ -781,19 +781,19 @@ bool wallet_remote_ann_sigs_load(const tal_t *ctx, struct wallet *w, u64 id,
 
 	/* if only one sig exists, forget the sig and hope peer send new ones*/
 	if (db_column_is_null(stmt, 0) || db_column_is_null(stmt, 1)) {
-		*remote_ann_node_sig = *remote_ann_bitcoin_sig = NULL;
+		*remote_ann_node_sig = *remote_ann_zcore_sig = NULL;
 		tal_free(stmt);
 		return true;
 	}
 
 	/* the case left over is both sigs exist */
 	*remote_ann_node_sig = tal(ctx, secp256k1_ecdsa_signature);
-	*remote_ann_bitcoin_sig = tal(ctx, secp256k1_ecdsa_signature);
+	*remote_ann_zcore_sig = tal(ctx, secp256k1_ecdsa_signature);
 
 	if (!db_column_signature(stmt, 0, *remote_ann_node_sig))
 		goto fail;
 
-	if (!db_column_signature(stmt, 1, *remote_ann_bitcoin_sig))
+	if (!db_column_signature(stmt, 1, *remote_ann_zcore_sig))
 		goto fail;
 
 	tal_free(stmt);
@@ -801,7 +801,7 @@ bool wallet_remote_ann_sigs_load(const tal_t *ctx, struct wallet *w, u64 id,
 
 fail:
 	*remote_ann_node_sig = tal_free(*remote_ann_node_sig);
-	*remote_ann_bitcoin_sig = tal_free(*remote_ann_bitcoin_sig);
+	*remote_ann_zcore_sig = tal_free(*remote_ann_zcore_sig);
 	tal_free(stmt);
 	return false;
 }
@@ -819,8 +819,8 @@ static struct channel *wallet_stmt2channel(struct wallet *w, struct db_stmt *stm
 	struct peer *peer;
 	struct wallet_shachain wshachain;
 	struct channel_config our_config;
-	struct bitcoin_txid funding_txid;
-	struct bitcoin_signature last_sig;
+	struct zcore_txid funding_txid;
+	struct zcore_signature last_sig;
 	u8 *remote_shutdown_scriptpubkey;
 	u8 *local_shutdown_scriptpubkey;
 	struct changed_htlc *last_sent_commit;
@@ -1245,17 +1245,17 @@ u64 wallet_get_channel_dbid(struct wallet *wallet)
 /* When we receive the remote announcement message, we will also call this function */
 void wallet_announcement_save(struct wallet *w, u64 id,
 			      secp256k1_ecdsa_signature *remote_ann_node_sig,
-			      secp256k1_ecdsa_signature *remote_ann_bitcoin_sig)
+			      secp256k1_ecdsa_signature *remote_ann_zcore_sig)
 {
 	struct db_stmt *stmt;
 
 	stmt = db_prepare_v2(w->db, SQL("UPDATE channels SET"
 					"  remote_ann_node_sig=?,"
-					"  remote_ann_bitcoin_sig=?"
+					"  remote_ann_zcore_sig=?"
 					" WHERE id=?"));
 
 	db_bind_signature(stmt, 0, remote_ann_node_sig);
-	db_bind_signature(stmt, 1, remote_ann_bitcoin_sig);
+	db_bind_signature(stmt, 1, remote_ann_zcore_sig);
 	db_bind_u64(stmt, 2, id);
 	db_exec_prepared_v2(take(stmt));
 }
@@ -1501,7 +1501,7 @@ void wallet_peer_delete(struct wallet *w, u64 peer_dbid)
 }
 
 void wallet_confirm_tx(struct wallet *w,
-		       const struct bitcoin_txid *txid,
+		       const struct zcore_txid *txid,
 		       const u32 confirmation_height)
 {
 	struct db_stmt *stmt;
@@ -1515,7 +1515,7 @@ void wallet_confirm_tx(struct wallet *w,
 	db_exec_prepared_v2(take(stmt));
 }
 
-int wallet_extract_owned_outputs(struct wallet *w, const struct bitcoin_tx *tx,
+int wallet_extract_owned_outputs(struct wallet *w, const struct zcore_tx *tx,
 				 const u32 *blockheight,
 				 struct amount_sat *total)
 {
@@ -1527,12 +1527,12 @@ int wallet_extract_owned_outputs(struct wallet *w, const struct bitcoin_tx *tx,
 		u32 index;
 		bool is_p2sh;
 		const u8 *script;
-		struct amount_asset asset = bitcoin_tx_output_get_amount(tx, output);
+		struct amount_asset asset = zcore_tx_output_get_amount(tx, output);
 
 		if (!amount_asset_is_main(&asset))
 			continue;
 
-		script = bitcoin_tx_output_get_script(tmpctx, tx, output);
+		script = zcore_tx_output_get_script(tmpctx, tx, output);
 		if (!script)
 			continue;
 
@@ -1544,7 +1544,7 @@ int wallet_extract_owned_outputs(struct wallet *w, const struct bitcoin_tx *tx,
 		utxo->is_p2sh = is_p2sh;
 		utxo->amount = amount_asset_to_sat(&asset);
 		utxo->status = output_state_available;
-		bitcoin_txid(tx, &utxo->txid);
+		zcore_txid(tx, &utxo->txid);
 		utxo->outnum = output;
 		utxo->close_info = NULL;
 
@@ -1557,7 +1557,7 @@ int wallet_extract_owned_outputs(struct wallet *w, const struct bitcoin_tx *tx,
 			  type_to_string(tmpctx, struct amount_sat,
 					 &utxo->amount),
 			  is_p2sh ? "P2SH" : "SEGWIT",
-			  type_to_string(tmpctx, struct bitcoin_txid,
+			  type_to_string(tmpctx, struct zcore_txid,
 					 &utxo->txid), blockheight ? " CONFIRMED" : "");
 
 		if (!wallet_add_utxo(w, utxo, is_p2sh ? p2sh_wpkh : our_change)) {
@@ -2532,7 +2532,7 @@ void wallet_htlc_sigs_save(struct wallet *w, u64 channel_id,
 bool wallet_network_check(struct wallet *w,
 			  const struct chainparams *chainparams)
 {
-	struct bitcoin_blkid chainhash;
+	struct zcore_blkid chainhash;
 	struct db_stmt *stmt = db_prepare_v2(
 	    w->db, SQL("SELECT blobval FROM vars WHERE name='genesis_hash'"));
 	db_query_prepared(stmt);
@@ -2540,16 +2540,16 @@ bool wallet_network_check(struct wallet *w,
 	if (db_step(stmt)) {
 		db_column_sha256d(stmt, 0, &chainhash.shad);
 		tal_free(stmt);
-		if (!bitcoin_blkid_eq(&chainhash,
+		if (!zcore_blkid_eq(&chainhash,
 				      &chainparams->genesis_blockhash)) {
 			log_broken(w->log, "Wallet blockchain hash does not "
 					   "match network blockchain hash: %s "
 					   "!= %s. "
 					   "Are you on the right network? "
 					   "(--network={one of %s})",
-				   type_to_string(w, struct bitcoin_blkid,
+				   type_to_string(w, struct zcore_blkid,
 						  &chainhash),
-				   type_to_string(w, struct bitcoin_blkid,
+				   type_to_string(w, struct zcore_blkid,
 						  &chainparams->genesis_blockhash),
 				   chainparams_get_network_names(tmpctx));
 			return false;
@@ -2572,7 +2572,7 @@ bool wallet_network_check(struct wallet *w,
 static void wallet_utxoset_prune(struct wallet *w, const u32 blockheight)
 {
 	struct db_stmt *stmt;
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 
 	stmt = db_prepare_v2(
 	    w->db,
@@ -2638,7 +2638,7 @@ void wallet_blocks_rollback(struct wallet *w, u32 height)
 
 const struct short_channel_id *
 wallet_outpoint_spend(struct wallet *w, const tal_t *ctx, const u32 blockheight,
-		      const struct bitcoin_txid *txid, const u32 outnum)
+		      const struct zcore_txid *txid, const u32 outnum)
 {
 	struct short_channel_id *scid;
 	struct db_stmt *stmt;
@@ -2700,14 +2700,14 @@ wallet_outpoint_spend(struct wallet *w, const tal_t *ctx, const u32 blockheight,
 	return NULL;
 }
 
-void wallet_utxoset_add(struct wallet *w, const struct bitcoin_tx *tx,
+void wallet_utxoset_add(struct wallet *w, const struct zcore_tx *tx,
 			const u32 outnum, const u32 blockheight,
 			const u32 txindex, const u8 *scriptpubkey,
 			struct amount_sat sat)
 {
 	struct db_stmt *stmt;
-	struct bitcoin_txid txid;
-	bitcoin_txid(tx, &txid);
+	struct zcore_txid txid;
+	zcore_txid(tx, &txid);
 
 	stmt = db_prepare_v2(w->db, SQL("INSERT INTO utxoset ("
 					" txid,"
@@ -2824,14 +2824,14 @@ struct outpoint *wallet_outpoint_for_scid(struct wallet *w, tal_t *ctx,
 	return op;
 }
 
-void wallet_transaction_add(struct wallet *w, const struct bitcoin_tx *tx,
+void wallet_transaction_add(struct wallet *w, const struct zcore_tx *tx,
 			    const u32 blockheight, const u32 txindex)
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	struct db_stmt *stmt = db_prepare_v2(
 	    w->db, SQL("SELECT blockheight FROM transactions WHERE id=?"));
 
-	bitcoin_txid(tx, &txid);
+	zcore_txid(tx, &txid);
 	db_bind_txid(stmt, 0, &txid);
 	db_query_prepared(stmt);
 
@@ -2871,7 +2871,7 @@ void wallet_transaction_add(struct wallet *w, const struct bitcoin_tx *tx,
 	}
 }
 
-static void wallet_annotation_add(struct wallet *w, const struct bitcoin_txid *txid, int num,
+static void wallet_annotation_add(struct wallet *w, const struct zcore_txid *txid, int num,
 				  enum wallet_tx_annotation_type annotation_type, enum wallet_tx_type type, u64 channel)
 {
 	struct db_stmt *stmt;
@@ -2892,20 +2892,20 @@ static void wallet_annotation_add(struct wallet *w, const struct bitcoin_txid *t
 	db_exec_prepared_v2(take(stmt));
 }
 
-void wallet_annotate_txout(struct wallet *w, const struct bitcoin_txid *txid,
+void wallet_annotate_txout(struct wallet *w, const struct zcore_txid *txid,
 			   int outnum, enum wallet_tx_type type, u64 channel)
 {
 	wallet_annotation_add(w, txid, outnum, OUTPUT_ANNOTATION, type, channel);
 }
 
-void wallet_annotate_txin(struct wallet *w, const struct bitcoin_txid *txid,
+void wallet_annotate_txin(struct wallet *w, const struct zcore_txid *txid,
 			  int innum, enum wallet_tx_type type, u64 channel)
 {
 	wallet_annotation_add(w, txid, innum, INPUT_ANNOTATION, type, channel);
 }
 
 void wallet_transaction_annotate(struct wallet *w,
-				 const struct bitcoin_txid *txid, enum wallet_tx_type type,
+				 const struct zcore_txid *txid, enum wallet_tx_type type,
 				 u64 channel_id)
 {
 	struct db_stmt *stmt = db_prepare_v2(
@@ -2915,7 +2915,7 @@ void wallet_transaction_annotate(struct wallet *w,
 
 	if (!db_step(stmt))
 		fatal("Attempting to annotate a transaction we don't have: %s",
-		      type_to_string(tmpctx, struct bitcoin_txid, txid));
+		      type_to_string(tmpctx, struct zcore_txid, txid));
 
 	if (!db_column_is_null(stmt, 0))
 		type |= db_column_u64(stmt, 0);
@@ -2941,7 +2941,7 @@ void wallet_transaction_annotate(struct wallet *w,
 	db_exec_prepared_v2(take(stmt));
 }
 
-bool wallet_transaction_type(struct wallet *w, const struct bitcoin_txid *txid,
+bool wallet_transaction_type(struct wallet *w, const struct zcore_txid *txid,
 			     enum wallet_tx_type *type)
 {
 	struct db_stmt *stmt = db_prepare_v2(w->db, SQL("SELECT type FROM transactions WHERE id=?"));
@@ -2962,7 +2962,7 @@ bool wallet_transaction_type(struct wallet *w, const struct bitcoin_txid *txid,
 	return true;
 }
 
-u32 wallet_transaction_height(struct wallet *w, const struct bitcoin_txid *txid)
+u32 wallet_transaction_height(struct wallet *w, const struct zcore_txid *txid)
 {
 	u32 blockheight;
 	struct db_stmt *stmt = db_prepare_v2(
@@ -2984,7 +2984,7 @@ u32 wallet_transaction_height(struct wallet *w, const struct bitcoin_txid *txid)
 }
 
 struct txlocator *wallet_transaction_locate(const tal_t *ctx, struct wallet *w,
-					    const struct bitcoin_txid *txid)
+					    const struct zcore_txid *txid)
 {
 	struct txlocator *loc;
 	struct db_stmt *stmt;
@@ -3010,12 +3010,12 @@ struct txlocator *wallet_transaction_locate(const tal_t *ctx, struct wallet *w,
 	return loc;
 }
 
-struct bitcoin_txid *wallet_transactions_by_height(const tal_t *ctx,
+struct zcore_txid *wallet_transactions_by_height(const tal_t *ctx,
 						   struct wallet *w,
 						   const u32 blockheight)
 {
 	struct db_stmt *stmt;
-	struct bitcoin_txid *txids = tal_arr(ctx, struct bitcoin_txid, 0);
+	struct zcore_txid *txids = tal_arr(ctx, struct zcore_txid, 0);
 	int count = 0;
 	stmt = db_prepare_v2(
 	    w->db, SQL("SELECT id FROM transactions WHERE blockheight=?"));
@@ -3033,7 +3033,7 @@ struct bitcoin_txid *wallet_transactions_by_height(const tal_t *ctx,
 }
 
 void wallet_channeltxs_add(struct wallet *w, struct channel *chan,
-			   const int type, const struct bitcoin_txid *txid,
+			   const int type, const struct zcore_txid *txid,
 			   const u32 input_num, const u32 blockheight)
 {
 	struct db_stmt *stmt;
@@ -3343,12 +3343,12 @@ const struct forwarding *wallet_forwarded_payments_get(struct wallet *w,
 }
 
 struct unreleased_tx *find_unreleased_tx(struct wallet *w,
-					 const struct bitcoin_txid *txid)
+					 const struct zcore_txid *txid)
 {
 	struct unreleased_tx *utx;
 
 	list_for_each(&w->unreleased_txs, utx, list) {
-		if (bitcoin_txid_eq(txid, &utx->txid))
+		if (zcore_txid_eq(txid, &utx->txid))
 			return utx;
 	}
 	return NULL;
@@ -3380,38 +3380,38 @@ void free_unreleased_txs(struct wallet *w)
 		tal_free(utx);
 }
 
-static void process_utxo_result(struct bitcoind *bitcoind,
-				const struct bitcoin_tx_output *txout,
+static void process_utxo_result(struct zcored *zcored,
+				const struct zcore_tx_output *txout,
 				void *_utxos)
 {
 	struct utxo **utxos = _utxos;
 	enum output_status newstate =
 	    txout == NULL ? output_state_spent : output_state_available;
 
-	log_unusual(bitcoind->ld->wallet->log,
+	log_unusual(zcored->ld->wallet->log,
 		    "wallet: reserved output %s/%u reset to %s",
-		    type_to_string(tmpctx, struct bitcoin_txid, &utxos[0]->txid),
+		    type_to_string(tmpctx, struct zcore_txid, &utxos[0]->txid),
 		    utxos[0]->outnum,
 		    newstate == output_state_spent ? "spent" : "available");
-	wallet_update_output_status(bitcoind->ld->wallet,
+	wallet_update_output_status(zcored->ld->wallet,
 				    &utxos[0]->txid, utxos[0]->outnum,
 				    utxos[0]->status, newstate);
 
 	/* If we have more, resolve them too. */
 	tal_arr_remove(&utxos, 0);
 	if (tal_count(utxos) != 0) {
-		bitcoind_gettxout(bitcoind, &utxos[0]->txid, utxos[0]->outnum,
+		zcored_gettxout(zcored, &utxos[0]->txid, utxos[0]->outnum,
 				  process_utxo_result, utxos);
 	} else
 		tal_free(utxos);
 }
 
-void wallet_clean_utxos(struct wallet *w, struct bitcoind *bitcoind)
+void wallet_clean_utxos(struct wallet *w, struct zcored *zcored)
 {
 	struct utxo **utxos = wallet_get_utxos(NULL, w, output_state_reserved);
 
 	if (tal_count(utxos) != 0) {
-		bitcoind_gettxout(bitcoind, &utxos[0]->txid, utxos[0]->outnum,
+		zcored_gettxout(zcored, &utxos[0]->txid, utxos[0]->outnum,
 				  process_utxo_result, notleak(utxos));
 	} else
 		tal_free(utxos);
@@ -3422,7 +3422,7 @@ struct wallet_transaction *wallet_transactions_get(struct wallet *w, const tal_t
 	struct db_stmt *stmt;
 	size_t count;
 	struct wallet_transaction *cur = NULL, *txs = tal_arr(ctx, struct wallet_transaction, 0);
-	struct bitcoin_txid last;
+	struct zcore_txid last;
 
 	/* Make sure we can check for changing txids */
 	memset(&last, 0, sizeof(last));
@@ -3449,13 +3449,13 @@ struct wallet_transaction *wallet_transactions_get(struct wallet *w, const tal_t
 	db_query_prepared(stmt);
 
 	for (count = 0; db_step(stmt); count++) {
-		struct bitcoin_txid curtxid;
+		struct zcore_txid curtxid;
 		db_column_txid(stmt, 0, &curtxid);
 
 		/* If this is a new entry, allocate it in the array and set
 		 * the common fields (all fields from the transactions
 		 * table. */
-		if (!bitcoin_txid_eq(&last, &curtxid)) {
+		if (!zcore_txid_eq(&last, &curtxid)) {
 			last = curtxid;
 			tal_resize(&txs, count + 1);
 			cur = &txs[count];

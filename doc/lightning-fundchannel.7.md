@@ -36,7 +36,7 @@ estimates: *normal* is the default.
 
 Otherwise, *feerate* is a number, with an optional suffix: *perkw* means
 the number is interpreted as satoshi-per-kilosipa (weight), and *perkb*
-means it is interpreted bitcoind-style as satoshi-per-kilobyte. Omitting
+means it is interpreted zcored-style as satoshi-per-kilobyte. Omitting
 the suffix is equivalent to *perkb*.
 
 *announce* is an optional flag that triggers whether to announce this
@@ -61,7 +61,7 @@ The following error codes may occur:
 - 300: The maximum allowed funding amount is exceeded.
 - 301: There are not enough funds in the internal wallet (including fees) to create the transaction.
 - 302: The output amount is too small, and would be considered dust.
-- 303: Broadcasting of the funding transaction failed, the internal call to bitcoin-cli returned with an error.
+- 303: Broadcasting of the funding transaction failed, the internal call to zcore-cli returned with an error.
 
 Failure may also occur if **lightningd** and the peer cannot agree on
 channel parameters (funding limits, channel reserves, fees, etc.).

@@ -1,4 +1,4 @@
-/* Code to talk to bitcoind to watch for various events.
+/* Code to talk to zcored to watch for various events.
  *
  * Here's what we want to know:
  *
@@ -26,12 +26,12 @@
  *
  * WE ASSUME NO MALLEABILITY!  This requires segregated witness.
  */
-#include <bitcoin/script.h>
+#include <zcore/script.h>
 #include <ccan/crypto/siphash24/siphash24.h>
 #include <ccan/ptrint/ptrint.h>
 #include <common/pseudorand.h>
 #include <common/timeout.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/lightningd.h>
 #include <lightningd/log.h>
@@ -50,7 +50,7 @@ struct txowatch {
 
 	/* A new tx. */
 	enum watch_result (*cb)(struct channel *channel,
-				const struct bitcoin_tx *tx,
+				const struct zcore_tx *tx,
 				size_t input_num,
 				const struct block *block);
 };
@@ -62,18 +62,18 @@ struct txwatch {
 	struct channel *channel;
 
 	/* Transaction to watch. */
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 
 	/* May be NULL if we haven't seen it yet. */
-	const struct bitcoin_tx *tx;
+	const struct zcore_tx *tx;
 
 	unsigned int depth;
 
 	/* A new depth (0 if kicked out, otherwise 1 = tip, etc.) */
 	enum watch_result (*cb)(struct lightningd *ld,
 				struct channel *channel,
-				const struct bitcoin_txid *txid,
-				const struct bitcoin_tx *tx,
+				const struct zcore_txid *txid,
+				const struct zcore_tx *tx,
 				unsigned int depth);
 };
 
@@ -93,7 +93,7 @@ size_t txo_hash(const struct txwatch_output *out)
 
 bool txowatch_eq(const struct txowatch *w, const struct txwatch_output *out)
 {
-	return bitcoin_txid_eq(&w->out.txid, &out->txid)
+	return zcore_txid_eq(&w->out.txid, &out->txid)
 		&& w->out.index == out->index;
 }
 
@@ -102,20 +102,20 @@ static void destroy_txowatch(struct txowatch *w)
 	txowatch_hash_del(&w->topo->txowatches, w);
 }
 
-const struct bitcoin_txid *txwatch_keyof(const struct txwatch *w)
+const struct zcore_txid *txwatch_keyof(const struct txwatch *w)
 {
 	return &w->txid;
 }
 
-size_t txid_hash(const struct bitcoin_txid *txid)
+size_t txid_hash(const struct zcore_txid *txid)
 {
 	return siphash24(siphash_seed(),
 			 txid->shad.sha.u.u8, sizeof(txid->shad.sha.u.u8));
 }
 
-bool txwatch_eq(const struct txwatch *w, const struct bitcoin_txid *txid)
+bool txwatch_eq(const struct txwatch *w, const struct zcore_txid *txid)
 {
-	return bitcoin_txid_eq(&w->txid, txid);
+	return zcore_txid_eq(&w->txid, txid);
 }
 
 static void destroy_txwatch(struct txwatch *w)
@@ -126,11 +126,11 @@ static void destroy_txwatch(struct txwatch *w)
 struct txwatch *watch_txid(const tal_t *ctx,
 			   struct chain_topology *topo,
 			   struct channel *channel,
-			   const struct bitcoin_txid *txid,
+			   const struct zcore_txid *txid,
 			   enum watch_result (*cb)(struct lightningd *ld,
 						   struct channel *channel,
-						   const struct bitcoin_txid *txid,
-						   const struct bitcoin_tx *tx,
+						   const struct zcore_txid *txid,
+						   const struct zcore_tx *tx,
 						   unsigned int depth))
 {
 	struct txwatch *w;
@@ -150,7 +150,7 @@ struct txwatch *watch_txid(const tal_t *ctx,
 }
 
 struct txwatch *find_txwatch(struct chain_topology *topo,
-			     const struct bitcoin_txid *txid,
+			     const struct zcore_txid *txid,
 			     const struct channel *channel)
 {
 	struct txwatch_hash_iter i;
@@ -168,7 +168,7 @@ struct txwatch *find_txwatch(struct chain_topology *topo,
 }
 
 bool watching_txid(const struct chain_topology *topo,
-		   const struct bitcoin_txid *txid)
+		   const struct zcore_txid *txid)
 {
 	return txwatch_hash_get(&topo->txwatches, txid) != NULL;
 }
@@ -176,16 +176,16 @@ bool watching_txid(const struct chain_topology *topo,
 struct txwatch *watch_tx(const tal_t *ctx,
 			 struct chain_topology *topo,
 			 struct channel *channel,
-			 const struct bitcoin_tx *tx,
+			 const struct zcore_tx *tx,
 			 enum watch_result (*cb)(struct lightningd *ld,
 						 struct channel *channel,
-						 const struct bitcoin_txid *,
-						 const struct bitcoin_tx *,
+						 const struct zcore_txid *,
+						 const struct zcore_tx *,
 						 unsigned int depth))
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 
-	bitcoin_txid(tx, &txid);
+	zcore_txid(tx, &txid);
 	/* FIXME: Save populate txwatch->tx here, too! */
 	return watch_txid(ctx, topo, channel, &txid, cb);
 }
@@ -193,10 +193,10 @@ struct txwatch *watch_tx(const tal_t *ctx,
 struct txowatch *watch_txo(const tal_t *ctx,
 			   struct chain_topology *topo,
 			   struct channel *channel,
-			   const struct bitcoin_txid *txid,
+			   const struct zcore_txid *txid,
 			   unsigned int output,
 			   enum watch_result (*cb)(struct channel *channel,
-						   const struct bitcoin_tx *tx,
+						   const struct zcore_tx *tx,
 						   size_t input_num,
 						   const struct block *block))
 {
@@ -216,7 +216,7 @@ struct txowatch *watch_txo(const tal_t *ctx,
 
 /* Returns true if we fired a callback */
 static bool txw_fire(struct txwatch *txw,
-		     const struct bitcoin_txid *txid,
+		     const struct zcore_txid *txid,
 		     unsigned int depth)
 {
 	enum watch_result r;
@@ -233,10 +233,10 @@ static bool txw_fire(struct txwatch *txw,
 	log_debug(log,
 		  "Got depth change %u->%u for %s%s",
 		  txw->depth, depth,
-		  type_to_string(tmpctx, struct bitcoin_txid, &txw->txid),
+		  type_to_string(tmpctx, struct zcore_txid, &txw->txid),
 		  depth ? "" : " REORG");
 	txw->depth = depth;
-	r = txw->cb(txw->topo->bitcoind->ld, txw->channel, txid, txw->tx,
+	r = txw->cb(txw->topo->zcored->ld, txw->channel, txid, txw->tx,
 		    txw->depth);
 	switch (r) {
 	case DELETE_WATCH:
@@ -249,7 +249,7 @@ static bool txw_fire(struct txwatch *txw,
 }
 
 void txwatch_fire(struct chain_topology *topo,
-		  const struct bitcoin_txid *txid,
+		  const struct zcore_txid *txid,
 		  unsigned int depth)
 {
 	struct txwatch *txw;
@@ -261,19 +261,19 @@ void txwatch_fire(struct chain_topology *topo,
 }
 
 void txowatch_fire(const struct txowatch *txow,
-		   const struct bitcoin_tx *tx,
+		   const struct zcore_tx *tx,
 		   size_t input_num,
 		   const struct block *block)
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	enum watch_result r;
 
-	bitcoin_txid(tx, &txid);
+	zcore_txid(tx, &txid);
 	log_debug(txow->channel->log,
 		  "Got UTXO spend for %s:%u: %s",
-		  type_to_string(tmpctx, struct bitcoin_txid, &txow->out.txid),
+		  type_to_string(tmpctx, struct zcore_txid, &txow->out.txid),
 		  txow->out.index,
-		  type_to_string(tmpctx, struct bitcoin_txid, &txid));
+		  type_to_string(tmpctx, struct zcore_txid, &txid));
 
 	r = txow->cb(txow->channel, tx, input_num, block);
 	switch (r) {
@@ -307,8 +307,8 @@ void watch_topology_changed(struct chain_topology *topo)
 }
 
 void txwatch_inform(const struct chain_topology *topo,
-		    const struct bitcoin_txid *txid,
-		    const struct bitcoin_tx *tx_may_steal)
+		    const struct zcore_txid *txid,
+		    const struct zcore_tx *tx_may_steal)
 {
 	struct txwatch *txw;
 

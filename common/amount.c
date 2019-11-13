@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <bitcoin/chainparams.h>
+#include <zcore/chainparams.h>
 #include <ccan/mem/mem.h>
 #include <ccan/tal/str/str.h>
 #include <common/amount.h>
@@ -32,8 +32,8 @@ const char *fmt_amount_msat_btc(const tal_t *ctx,
 				bool append_unit)
 {
 	return tal_fmt(ctx, "%"PRIu64".%011"PRIu64"%s",
-		       msat->millisatoshis / MSAT_PER_BTC,
-		       msat->millisatoshis % MSAT_PER_BTC,
+		       msat->millisatoshis / MSAT_PER_ZCR,
+		       msat->millisatoshis % MSAT_PER_ZCR,
 		       append_unit ? "btc" : "");
 }
 
@@ -48,8 +48,8 @@ const char *fmt_amount_sat_btc(const tal_t *ctx,
 			       bool append_unit)
 {
 	return tal_fmt(ctx, "%"PRIu64".%08"PRIu64"%s",
-		       sat->satoshis / SAT_PER_BTC,
-		       sat->satoshis % SAT_PER_BTC,
+		       sat->satoshis / SAT_PER_ZCR,
+		       sat->satoshis % SAT_PER_ZCR,
 		       append_unit ? "btc" : "");
 }
 

@@ -1,8 +1,8 @@
 #ifndef LIGHTNING_LIGHTNINGD_CHAINTOPOLOGY_H
 #define LIGHTNING_LIGHTNINGD_CHAINTOPOLOGY_H
 #include "config.h"
-#include <bitcoin/block.h>
-#include <bitcoin/tx.h>
+#include <zcore/block.h>
+#include <zcore/tx.h>
 #include <ccan/list/list.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/structeq/structeq.h>
@@ -13,8 +13,8 @@
 #include <math.h>
 #include <stddef.h>
 
-struct bitcoin_tx;
-struct bitcoind;
+struct zcore_tx;
+struct zcored;
 struct command;
 struct lightningd;
 struct peer;
@@ -36,7 +36,7 @@ struct outgoing_tx {
 	struct list_node list;
 	struct channel *channel;
 	const char *hextx;
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	void (*failed_or_success)(struct channel *channel, int exitstatus, const char *err);
 };
 
@@ -44,7 +44,7 @@ struct block {
 	u32 height;
 
 	/* Actual header. */
-	struct bitcoin_block_hdr hdr;
+	struct zcore_block_hdr hdr;
 
 	/* Previous block (if any). */
 	struct block *prev;
@@ -53,22 +53,22 @@ struct block {
 	struct block *next;
 
 	/* Key for hash table */
-	struct bitcoin_blkid blkid;
+	struct zcore_blkid blkid;
 
 	/* And their associated index in the block */
 	u32 *txnums;
 
 	/* Full copy of txs (trimmed to txs list in connect_block) */
-	struct bitcoin_tx **full_txs;
+	struct zcore_tx **full_txs;
 };
 
 /* Hash blocks by sha */
-static inline const struct bitcoin_blkid *keyof_block_map(const struct block *b)
+static inline const struct zcore_blkid *keyof_block_map(const struct block *b)
 {
 	return &b->blkid;
 }
 
-static inline size_t hash_sha(const struct bitcoin_blkid *key)
+static inline size_t hash_sha(const struct zcore_blkid *key)
 {
 	size_t ret;
 
@@ -76,9 +76,9 @@ static inline size_t hash_sha(const struct bitcoin_blkid *key)
 	return ret;
 }
 
-static inline bool block_eq(const struct block *b, const struct bitcoin_blkid *key)
+static inline bool block_eq(const struct block *b, const struct zcore_blkid *key)
 {
-	return bitcoin_blkid_eq(&b->blkid, key);
+	return zcore_blkid_eq(&b->blkid, key);
 }
 HTABLE_DEFINE_TYPE(struct block, keyof_block_map, hash_sha, block_eq, block_map);
 
@@ -100,18 +100,18 @@ struct chain_topology {
 	/* How often to poll. */
 	u32 poll_seconds;
 
-	/* struct sync_waiters waiting for us to catch up with bitcoind (and
+	/* struct sync_waiters waiting for us to catch up with zcored (and
 	 * once that has caught up with the network).  NULL if we're already
 	 * caught up. */
 	struct list_head *sync_waiters;
 
-	/* The bitcoind. */
-	struct bitcoind *bitcoind;
+	/* The zcored. */
+	struct zcored *zcored;
 
 	/* Our timer list. */
 	struct timers *timers;
 
-	/* Bitcoin transactions we're broadcasting */
+	/* ZCore transactions we're broadcasting */
 	struct list_head outgoing_txs;
 
 	/* Transactions/txos we are watching. */
@@ -132,7 +132,7 @@ struct txlocator {
 /* This is the number of blocks which would have to be mined to invalidate
  * the tx */
 size_t get_tx_depth(const struct chain_topology *topo,
-		    const struct bitcoin_txid *txid);
+		    const struct zcore_txid *txid);
 
 /* Get highest block number. */
 u32 get_block_height(const struct chain_topology *topo);
@@ -163,7 +163,7 @@ struct command_result *param_feerate_estimate(struct command *cmd,
 /* Broadcast a single tx, and rebroadcast as reqd (copies tx).
  * If failed is non-NULL, call that and don't rebroadcast. */
 void broadcast_tx(struct chain_topology *topo,
-		  struct channel *channel, const struct bitcoin_tx *tx,
+		  struct channel *channel, const struct zcore_tx *tx,
 		  void (*failed)(struct channel *channel,
 				 int exitstatus,
 				 const char *err));
@@ -174,7 +174,7 @@ void setup_topology(struct chain_topology *topology, struct timers *timers,
 
 void begin_topology(struct chain_topology *topo);
 
-struct txlocator *locate_tx(const void *ctx, const struct chain_topology *topo, const struct bitcoin_txid *txid);
+struct txlocator *locate_tx(const void *ctx, const struct chain_topology *topo, const struct zcore_txid *txid);
 
 static inline bool topology_synced(const struct chain_topology *topo)
 {
@@ -182,7 +182,7 @@ static inline bool topology_synced(const struct chain_topology *topo)
 }
 
 /**
- * topology_add_sync_waiter: wait for lightningd to sync with bitcoin network
+ * topology_add_sync_waiter: wait for lightningd to sync with zcore network
  * @ctx: context to allocate the waiter from.
  * @topo: chain topology
  * @cb: callback to call when we're synced.

@@ -1,5 +1,5 @@
-#include <bitcoin/privkey.h>
-#include <bitcoin/pubkey.h>
+#include <zcore/privkey.h>
+#include <zcore/pubkey.h>
 #include <ccan/crypto/sha256/sha256.h>
 #include <common/key_derive.h>
 #include <common/utils.h>

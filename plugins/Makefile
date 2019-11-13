@@ -12,14 +12,14 @@ PLUGIN_LIB_HEADER := plugins/libplugin.h
 PLUGIN_LIB_OBJS := $(PLUGIN_LIB_SRC:.c=.o)
 
 PLUGIN_COMMON_OBJS :=				\
-	bitcoin/pubkey.o			\
-	bitcoin/pullpush.o			\
-	bitcoin/script.o			\
-	bitcoin/shadouble.o			\
-	bitcoin/short_channel_id.o		\
-	bitcoin/signature.o			\
-	bitcoin/tx.o				\
-	bitcoin/varint.o			\
+	zcore/pubkey.o			\
+	zcore/pullpush.o			\
+	zcore/script.o			\
+	zcore/shadouble.o			\
+	zcore/short_channel_id.o		\
+	zcore/signature.o			\
+	zcore/tx.o				\
+	zcore/varint.o			\
 	common/amount.o				\
 	common/bech32.o				\
 	common/bech32_util.o			\
@@ -41,9 +41,9 @@ PLUGIN_COMMON_OBJS :=				\
 	wire/fromwire.o				\
 	wire/towire.o
 
-plugins/pay: bitcoin/chainparams.o $(PLUGIN_PAY_OBJS) $(PLUGIN_LIB_OBJS) $(PLUGIN_COMMON_OBJS) $(JSMN_OBJS) $(CCAN_OBJS)
+plugins/pay: zcore/chainparams.o $(PLUGIN_PAY_OBJS) $(PLUGIN_LIB_OBJS) $(PLUGIN_COMMON_OBJS) $(JSMN_OBJS) $(CCAN_OBJS)
 
-plugins/autoclean: bitcoin/chainparams.o $(PLUGIN_AUTOCLEAN_OBJS) $(PLUGIN_LIB_OBJS) $(PLUGIN_COMMON_OBJS) $(JSMN_OBJS) $(CCAN_OBJS)
+plugins/autoclean: zcore/chainparams.o $(PLUGIN_AUTOCLEAN_OBJS) $(PLUGIN_LIB_OBJS) $(PLUGIN_COMMON_OBJS) $(JSMN_OBJS) $(CCAN_OBJS)
 
 plugins/fundchannel: common/addr.o $(PLUGIN_FUNDCHANNEL_OBJS) $(PLUGIN_LIB_OBJS) $(PLUGIN_COMMON_OBJS) $(JSMN_OBJS) $(CCAN_OBJS)
 

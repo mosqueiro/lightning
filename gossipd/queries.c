@@ -240,7 +240,7 @@ bool query_short_channel_ids(struct daemon *daemon,
  * called when there's nothing more important to send. */
 const u8 *handle_query_short_channel_ids(struct peer *peer, const u8 *msg)
 {
-	struct bitcoin_blkid chain;
+	struct zcore_blkid chain;
 	u8 *encoded;
 	struct short_channel_id *scids;
 	bigsize_t *flags;
@@ -279,10 +279,10 @@ const u8 *handle_query_short_channel_ids(struct peer *peer, const u8 *msg)
 	 *   - if does not maintain up-to-date channel information for `chain_hash`:
 	 *     - MUST set `complete` to 0.
 	 */
-	if (!bitcoin_blkid_eq(&peer->daemon->chain_hash, &chain)) {
+	if (!zcore_blkid_eq(&peer->daemon->chain_hash, &chain)) {
 		status_debug("%s sent query_short_channel_ids chainhash %s",
 			     type_to_string(tmpctx, struct node_id, &peer->id),
-			     type_to_string(tmpctx, struct bitcoin_blkid, &chain));
+			     type_to_string(tmpctx, struct zcore_blkid, &chain));
 		return towire_reply_short_channel_ids_end(peer, &chain, 0);
 	}
 
@@ -570,7 +570,7 @@ wont_fit:
 const u8 *handle_query_channel_range(struct peer *peer, const u8 *msg)
 {
 	struct routing_state *rstate = peer->daemon->rstate;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	u32 first_blocknum, number_of_blocks, tail_blocks;
 	struct short_channel_id last_scid;
 	enum query_option_flags query_option_flags;
@@ -596,10 +596,10 @@ const u8 *handle_query_channel_range(struct peer *peer, const u8 *msg)
 	 *   - if does not maintain up-to-date channel information for `chain_hash`:
 	 *     - MUST set `complete` to 0.
 	 */
-	if (!bitcoin_blkid_eq(&peer->daemon->chain_hash, &chain_hash)) {
+	if (!zcore_blkid_eq(&peer->daemon->chain_hash, &chain_hash)) {
 		status_debug("%s sent query_channel_range chainhash %s",
 			     type_to_string(tmpctx, struct node_id, &peer->id),
-			     type_to_string(tmpctx, struct bitcoin_blkid,
+			     type_to_string(tmpctx, struct zcore_blkid,
 					    &chain_hash));
 		u8 *end = towire_reply_channel_range(NULL, &chain_hash, first_blocknum,
 		                                     number_of_blocks, false, NULL, NULL);
@@ -637,7 +637,7 @@ const u8 *handle_query_channel_range(struct peer *peer, const u8 *msg)
  * expecting them until the entire range we asked for is covered. */
 const u8 *handle_reply_channel_range(struct peer *peer, const u8 *msg)
 {
-	struct bitcoin_blkid chain;
+	struct zcore_blkid chain;
 	u8 complete;
 	u32 first_blocknum, number_of_blocks, start, end;
 	u8 *encoded;
@@ -661,7 +661,7 @@ const u8 *handle_reply_channel_range(struct peer *peer, const u8 *msg)
 				       tal_hex(tmpctx, msg));
 	}
 
-	if (!bitcoin_blkid_eq(&peer->daemon->chain_hash, &chain)) {
+	if (!zcore_blkid_eq(&peer->daemon->chain_hash, &chain)) {
 		return towire_errorfmt(peer, NULL,
 				       "reply_channel_range for bad chain: %s",
 				       tal_hex(tmpctx, msg));
@@ -791,7 +791,7 @@ const u8 *handle_reply_channel_range(struct peer *peer, const u8 *msg)
  * and 'I don't know those channels'. */
 const u8 *handle_reply_short_channel_ids_end(struct peer *peer, const u8 *msg)
 {
-	struct bitcoin_blkid chain;
+	struct zcore_blkid chain;
 	u8 complete;
 
 	if (!fromwire_reply_short_channel_ids_end(msg, &chain, &complete)) {
@@ -800,7 +800,7 @@ const u8 *handle_reply_short_channel_ids_end(struct peer *peer, const u8 *msg)
 				       tal_hex(tmpctx, msg));
 	}
 
-	if (!bitcoin_blkid_eq(&peer->daemon->chain_hash, &chain)) {
+	if (!zcore_blkid_eq(&peer->daemon->chain_hash, &chain)) {
 		return towire_errorfmt(peer, NULL,
 				       "reply_short_channel_ids_end for bad chain: %s",
 				       tal_hex(tmpctx, msg));

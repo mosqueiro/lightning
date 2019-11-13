@@ -1,5 +1,5 @@
 #include "utils.h"
-#include <bitcoin/chainparams.h>
+#include <zcore/chainparams.h>
 #include <ccan/list/list.h>
 #include <ccan/str/hex/hex.h>
 #include <ccan/tal/str/str.h>

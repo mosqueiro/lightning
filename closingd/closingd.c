@@ -1,4 +1,4 @@
-#include <bitcoin/script.h>
+#include <zcore/script.h>
 #include <ccan/fdpass/fdpass.h>
 #include <closingd/gen_closing_wire.h>
 #include <common/close_tx.h>
@@ -30,12 +30,12 @@
 #define REQ_FD STDIN_FILENO
 #define HSM_FD 6
 
-static struct bitcoin_tx *close_tx(const tal_t *ctx,
+static struct zcore_tx *close_tx(const tal_t *ctx,
 				   const struct chainparams *chainparams,
 				   struct per_peer_state *pps,
 				   const struct channel_id *channel_id,
 				   u8 *scriptpubkey[NUM_SIDES],
-				   const struct bitcoin_txid *funding_txid,
+				   const struct zcore_txid *funding_txid,
 				   unsigned int funding_txout,
 				   struct amount_sat funding,
 				   const struct amount_sat out[NUM_SIDES],
@@ -43,7 +43,7 @@ static struct bitcoin_tx *close_tx(const tal_t *ctx,
 				   struct amount_sat fee,
 				   struct amount_sat dust_limit)
 {
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	struct amount_sat out_minus_fee[NUM_SIDES];
 
 	out_minus_fee[LOCAL] = out[LOCAL];
@@ -238,7 +238,7 @@ static void send_offer(struct per_peer_state *pps,
 		       const struct channel_id *channel_id,
 		       const struct pubkey funding_pubkey[NUM_SIDES],
 		       u8 *scriptpubkey[NUM_SIDES],
-		       const struct bitcoin_txid *funding_txid,
+		       const struct zcore_txid *funding_txid,
 		       unsigned int funding_txout,
 		       struct amount_sat funding,
 		       const struct amount_sat out[NUM_SIDES],
@@ -246,13 +246,13 @@ static void send_offer(struct per_peer_state *pps,
 		       struct amount_sat our_dust_limit,
 		       struct amount_sat fee_to_offer)
 {
-	struct bitcoin_tx *tx;
-	struct bitcoin_signature our_sig;
+	struct zcore_tx *tx;
+	struct zcore_signature our_sig;
 	u8 *msg;
 
 	/* BOLT #2:
 	 *
-	 *   - MUST set `signature` to the Bitcoin signature of the close
+	 *   - MUST set `signature` to the ZCore signature of the close
 	 *     transaction, as specified in [BOLT
 	 *     #3](03-transactions.md#closing-transaction).
 	 */
@@ -291,9 +291,9 @@ static void send_offer(struct per_peer_state *pps,
 	sync_crypto_write(pps, take(msg));
 }
 
-static void tell_master_their_offer(const struct bitcoin_signature *their_sig,
-				    const struct bitcoin_tx *tx,
-				    struct bitcoin_txid *tx_id)
+static void tell_master_their_offer(const struct zcore_signature *their_sig,
+				    const struct zcore_tx *tx,
+				    struct zcore_txid *tx_id)
 {
 	u8 *msg = towire_closing_received_signature(NULL, their_sig, tx);
 	if (!wire_sync_write(REQ_FD, take(msg)))
@@ -316,20 +316,20 @@ receive_offer(struct per_peer_state *pps,
 	      const struct pubkey funding_pubkey[NUM_SIDES],
 	      const u8 *funding_wscript,
 	      u8 *scriptpubkey[NUM_SIDES],
-	      const struct bitcoin_txid *funding_txid,
+	      const struct zcore_txid *funding_txid,
 	      unsigned int funding_txout,
 	      struct amount_sat funding,
 	      const struct amount_sat out[NUM_SIDES],
 	      enum side funder,
 	      struct amount_sat our_dust_limit,
 	      struct amount_sat min_fee_to_accept,
-	      struct bitcoin_txid *closing_txid)
+	      struct zcore_txid *closing_txid)
 {
 	u8 *msg;
 	struct channel_id their_channel_id;
 	struct amount_sat received_fee;
-	struct bitcoin_signature their_sig;
-	struct bitcoin_tx *tx;
+	struct zcore_signature their_sig;
+	struct zcore_tx *tx;
 
 	/* Wait for them to say something interesting */
 	do {
@@ -376,7 +376,7 @@ receive_offer(struct per_peer_state *pps,
 	if (!check_tx_sig(tx, 0, NULL, funding_wscript,
 			  &funding_pubkey[REMOTE], &their_sig)) {
 		/* Trim it by reducing their output to minimum */
-		struct bitcoin_tx *trimmed;
+		struct zcore_tx *trimmed;
 		struct amount_sat trimming_out[NUM_SIDES];
 
 		if (funder == REMOTE)
@@ -409,11 +409,11 @@ receive_offer(struct per_peer_state *pps,
 				    "Bad closing_signed signature for"
 				    " %s (and trimmed version %s)",
 				    type_to_string(tmpctx,
-						   struct bitcoin_tx,
+						   struct zcore_tx,
 						   tx),
 				    trimmed ?
 				    type_to_string(tmpctx,
-						   struct bitcoin_tx,
+						   struct zcore_tx,
 						   trimmed)
 				    : "NONE");
 		}
@@ -562,7 +562,7 @@ int main(int argc, char *argv[])
 	struct per_peer_state *pps;
 	u8 *msg;
 	struct pubkey funding_pubkey[NUM_SIDES];
-	struct bitcoin_txid funding_txid, closing_txid;
+	struct zcore_txid funding_txid, closing_txid;
 	u16 funding_txout;
 	struct amount_sat funding, out[NUM_SIDES];
 	struct amount_sat our_dust_limit;
@@ -618,7 +618,7 @@ int main(int argc, char *argv[])
 		     type_to_string(tmpctx, struct amount_sat, &offer[LOCAL]));
 	derive_channel_id(&channel_id, &funding_txid, funding_txout);
 
-	funding_wscript = bitcoin_redeem_2of2(ctx,
+	funding_wscript = zcore_redeem_2of2(ctx,
 					      &funding_pubkey[LOCAL],
 					      &funding_pubkey[REMOTE]);
 
@@ -722,7 +722,7 @@ int main(int argc, char *argv[])
 
 	peer_billboard(true, "We agreed on a closing fee of %"PRIu64" satoshi for tx:%s",
 		       offer[LOCAL],
-		       type_to_string(tmpctx, struct bitcoin_txid, &closing_txid));
+		       type_to_string(tmpctx, struct zcore_txid, &closing_txid));
 
 #if DEVELOPER
 	/* We don't listen for master commands, so always check memleak here */

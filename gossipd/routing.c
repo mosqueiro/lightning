@@ -1,7 +1,7 @@
 #include "routing.h"
 #include <arpa/inet.h>
-#include <bitcoin/block.h>
-#include <bitcoin/script.h>
+#include <zcore/block.h>
+#include <zcore/script.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/endian/endian.h>
 #include <ccan/mem/mem.h>
@@ -1392,11 +1392,11 @@ static u8 *check_channel_update(const tal_t *ctx,
 
 static u8 *check_channel_announcement(const tal_t *ctx,
 	const struct node_id *node1_id, const struct node_id *node2_id,
-	const struct pubkey *bitcoin1_key, const struct pubkey *bitcoin2_key,
+	const struct pubkey *zcore1_key, const struct pubkey *zcore2_key,
 	const secp256k1_ecdsa_signature *node1_sig,
 	const secp256k1_ecdsa_signature *node2_sig,
-	const secp256k1_ecdsa_signature *bitcoin1_sig,
-	const secp256k1_ecdsa_signature *bitcoin2_sig, const u8 *announcement)
+	const secp256k1_ecdsa_signature *zcore1_sig,
+	const secp256k1_ecdsa_signature *zcore2_sig, const u8 *announcement)
 {
 	/* 2 byte msg type + 256 byte signatures */
 	int offset = 258;
@@ -1428,25 +1428,25 @@ static u8 *check_channel_announcement(const tal_t *ctx,
 						      &hash),
 				       tal_hex(ctx, announcement));
 	}
-	if (!check_signed_hash(&hash, bitcoin1_sig, bitcoin1_key)) {
+	if (!check_signed_hash(&hash, zcore1_sig, zcore1_key)) {
 		return towire_errorfmt(ctx, NULL,
-				       "Bad bitcoin_signature_1 %s hash %s"
+				       "Bad zcore_signature_1 %s hash %s"
 				       " on node_announcement %s",
 				       type_to_string(ctx,
 						      secp256k1_ecdsa_signature,
-						      bitcoin1_sig),
+						      zcore1_sig),
 				       type_to_string(ctx,
 						      struct sha256_double,
 						      &hash),
 				       tal_hex(ctx, announcement));
 	}
-	if (!check_signed_hash(&hash, bitcoin2_sig, bitcoin2_key)) {
+	if (!check_signed_hash(&hash, zcore2_sig, zcore2_key)) {
 		return towire_errorfmt(ctx, NULL,
-				       "Bad bitcoin_signature_2 %s hash %s"
+				       "Bad zcore_signature_2 %s hash %s"
 				       " on node_announcement %s",
 				       type_to_string(ctx,
 						      secp256k1_ecdsa_signature,
-						      bitcoin2_sig),
+						      zcore2_sig),
 				       type_to_string(ctx,
 						      struct sha256_double,
 						      &hash),
@@ -1586,14 +1586,14 @@ bool routing_add_channel_announcement(struct routing_state *rstate,
 {
 	struct chan *chan;
 	secp256k1_ecdsa_signature node_signature_1, node_signature_2;
-	secp256k1_ecdsa_signature bitcoin_signature_1, bitcoin_signature_2;
+	secp256k1_ecdsa_signature zcore_signature_1, zcore_signature_2;
 	u8 *features;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	struct short_channel_id scid;
 	struct node_id node_id_1;
 	struct node_id node_id_2;
-	struct pubkey bitcoin_key_1;
-	struct pubkey bitcoin_key_2;
+	struct pubkey zcore_key_1;
+	struct pubkey zcore_key_2;
 	struct unupdated_channel *uc;
 	const u8 *private_updates[2] = { NULL, NULL };
 
@@ -1603,8 +1603,8 @@ bool routing_add_channel_announcement(struct routing_state *rstate,
 
 	if (!fromwire_channel_announcement(
 		    tmpctx, msg, &node_signature_1, &node_signature_2,
-		    &bitcoin_signature_1, &bitcoin_signature_2, &features, &chain_hash,
-		    &scid, &node_id_1, &node_id_2, &bitcoin_key_1, &bitcoin_key_2))
+		    &zcore_signature_1, &zcore_signature_2, &features, &chain_hash,
+		    &scid, &node_id_1, &node_id_2, &zcore_key_1, &zcore_key_2))
 		return false;
 
 	/* The channel may already exist if it was non-public from
@@ -1674,10 +1674,10 @@ u8 *handle_channel_announcement(struct routing_state *rstate,
 				struct peer *peer)
 {
 	struct pending_cannouncement *pending;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	u8 *features, *err;
 	secp256k1_ecdsa_signature node_signature_1, node_signature_2;
-	secp256k1_ecdsa_signature bitcoin_signature_1, bitcoin_signature_2;
+	secp256k1_ecdsa_signature zcore_signature_1, zcore_signature_2;
 	struct chan *chan;
 
 	pending = tal(rstate, struct pending_cannouncement);
@@ -1692,15 +1692,15 @@ u8 *handle_channel_announcement(struct routing_state *rstate,
 	if (!fromwire_channel_announcement(pending, pending->announce,
 					   &node_signature_1,
 					   &node_signature_2,
-					   &bitcoin_signature_1,
-					   &bitcoin_signature_2,
+					   &zcore_signature_1,
+					   &zcore_signature_2,
 					   &features,
 					   &chain_hash,
 					   &pending->short_channel_id,
 					   &pending->node_id_1,
 					   &pending->node_id_2,
-					   &pending->bitcoin_key_1,
-					   &pending->bitcoin_key_2)) {
+					   &pending->zcore_key_1,
+					   &pending->zcore_key_2)) {
 		err = towire_errorfmt(rstate, NULL,
 				      "Malformed channel_announcement %s",
 				      tal_hex(pending, pending->announce));
@@ -1767,13 +1767,13 @@ u8 *handle_channel_announcement(struct routing_state *rstate,
 	 *  - if the specified `chain_hash` is unknown to the receiver:
 	 *    - MUST ignore the message.
 	 */
-	if (!bitcoin_blkid_eq(&chain_hash,
+	if (!zcore_blkid_eq(&chain_hash,
 			      &rstate->chainparams->genesis_blockhash)) {
 		status_debug(
 		    "Received channel_announcement %s for unknown chain %s",
 		    type_to_string(pending, struct short_channel_id,
 				   &pending->short_channel_id),
-		    type_to_string(pending, struct bitcoin_blkid, &chain_hash));
+		    type_to_string(pending, struct zcore_blkid, &chain_hash));
 		goto ignored;
 	}
 
@@ -1781,17 +1781,17 @@ u8 *handle_channel_announcement(struct routing_state *rstate,
 	err = check_channel_announcement(rstate,
 					 &pending->node_id_1,
 					 &pending->node_id_2,
-					 &pending->bitcoin_key_1,
-					 &pending->bitcoin_key_2,
+					 &pending->zcore_key_1,
+					 &pending->zcore_key_2,
 					 &node_signature_1,
 					 &node_signature_2,
-					 &bitcoin_signature_1,
-					 &bitcoin_signature_2,
+					 &zcore_signature_1,
+					 &zcore_signature_2,
 					 pending->announce);
 	if (err) {
 		/* BOLT #7:
 		 *
-		 * - if `bitcoin_signature_1`, `bitcoin_signature_2`,
+		 * - if `zcore_signature_1`, `zcore_signature_2`,
 		 *   `node_signature_1` OR `node_signature_2` are invalid OR NOT
 		 *    correct:
 		 *    - SHOULD fail the connection.
@@ -1800,7 +1800,7 @@ u8 *handle_channel_announcement(struct routing_state *rstate,
 	}
 
 	/* Don't add an infinite number of pending announcements.  If we're
-	 * catching up with the bitcoin chain, though, they can definitely
+	 * catching up with the zcore chain, though, they can definitely
 	 * pile up. */
 	if (pending_cannouncement_map_count(&rstate->pending_cannouncements)
 	    > 100000) {
@@ -1900,14 +1900,14 @@ bool handle_pending_cannouncement(struct daemon *daemon,
 	 * The receiving node:
 	 *...
 	 *   - if the `short_channel_id`'s output does NOT correspond to a P2WSH
-	 *     (using `bitcoin_key_1` and `bitcoin_key_2`, as specified in
+	 *     (using `zcore_key_1` and `zcore_key_2`, as specified in
 	 *    [BOLT #3](03-transactions.md#funding-transaction-output)) ...
 	 *    - MUST ignore the message.
 	 */
 	s = scriptpubkey_p2wsh(pending,
-			       bitcoin_redeem_2of2(pending,
-						   &pending->bitcoin_key_1,
-						   &pending->bitcoin_key_2));
+			       zcore_redeem_2of2(pending,
+						   &pending->zcore_key_1,
+						   &pending->zcore_key_2));
 
 	if (!scripteq(s, outscript)) {
 		status_debug("channel_announcement: txout %s expectes %s, got %s",
@@ -2002,7 +2002,7 @@ bool routing_add_channel_update(struct routing_state *rstate,
 	struct amount_msat htlc_minimum, htlc_maximum;
 	u32 fee_base_msat;
 	u32 fee_proportional_millionths;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	struct chan *chan;
 	struct half_chan *hc;
 	struct unupdated_channel *uc;
@@ -2253,7 +2253,7 @@ u8 *handle_channel_update(struct routing_state *rstate, const u8 *update TAKES,
 	struct amount_msat htlc_minimum;
 	u32 fee_base_msat;
 	u32 fee_proportional_millionths;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	u8 direction;
 	size_t len = tal_count(update);
 	struct pending_cannouncement *pending;
@@ -2281,10 +2281,10 @@ u8 *handle_channel_update(struct routing_state *rstate, const u8 *update TAKES,
 	 *    active on the specified chain):
 	 *    - MUST ignore the channel update.
 	 */
-	if (!bitcoin_blkid_eq(&chain_hash,
+	if (!zcore_blkid_eq(&chain_hash,
 			      &rstate->chainparams->genesis_blockhash)) {
 		status_debug("Received channel_update for unknown chain %s",
-			     type_to_string(tmpctx, struct bitcoin_blkid,
+			     type_to_string(tmpctx, struct zcore_blkid,
 					    &chain_hash));
 		return NULL;
 	}

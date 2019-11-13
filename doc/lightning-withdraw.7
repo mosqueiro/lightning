@@ -11,7 +11,7 @@ The \fBwithdraw\fR RPC command sends funds from c-lightning’s internal
 wallet to the address specified in \fIdestination\fR\.
 
 
-The address can be of any Bitcoin accepted type, including bech32\.
+The address can be of any ZCore accepted type, including bech32\.
 
 
 \fIsatoshi\fR is the amount to be withdrawn from the internal wallet
@@ -30,7 +30,7 @@ is the default\.
 
 Otherwise, \fIfeerate\fR is a number, with an optional suffix: \fIperkw\fR means
 the number is interpreted as satoshi-per-kilosipa (weight), and \fIperkb\fR
-means it is interpreted bitcoind-style as satoshi-per-kilobyte\. Omitting
+means it is interpreted zcored-style as satoshi-per-kilobyte\. Omitting
 the suffix is equivalent to \fIperkb\fR\.
 
 
@@ -46,8 +46,8 @@ of "txid:vout"\. These must be drawn from the node's available UTXO set\.
 On success, an object with attributes \fItx\fR and \fItxid\fR will be returned\.
 
 
-\fItx\fR represents the raw bitcoin, fully signed, transaction and \fItxid\fR
-represent the bitcoin transaction id\.
+\fItx\fR represents the raw zcore, fully signed, transaction and \fItxid\fR
+represent the zcore transaction id\.
 
 
 On failure, an error is reported and the withdrawal transaction is not

@@ -1,4 +1,4 @@
-/* Bitcoin does a lot of SHA of SHA.  Benchmark that. */
+/* ZCore does a lot of SHA of SHA.  Benchmark that. */
 #include <ccan/crypto/sha256/sha256.c>
 #include <ccan/time/time.h>
 #include <stdio.h>

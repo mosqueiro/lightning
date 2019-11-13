@@ -10,9 +10,9 @@
  *    reading and writing synchronously we could deadlock if we hit buffer
  *    limits, unlikely as that is.
  */
-#include <bitcoin/chainparams.h>
-#include <bitcoin/privkey.h>
-#include <bitcoin/script.h>
+#include <zcore/chainparams.h>
+#include <zcore/privkey.h>
+#include <zcore/script.h>
 #include <ccan/cast/cast.h>
 #include <ccan/container_of/container_of.h>
 #include <ccan/crypto/hkdf_sha256/hkdf_sha256.h>
@@ -86,7 +86,7 @@ struct peer {
 	struct pubkey old_remote_per_commit;
 
 	/* Their sig for current commit. */
-	struct bitcoin_signature their_commit_sig;
+	struct zcore_signature their_commit_sig;
 
 	/* BOLT #2:
 	 *
@@ -97,7 +97,7 @@ struct peer {
 	 */
 	u64 htlc_id;
 
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	struct channel_id channel_id;
 	struct channel *channel;
 
@@ -120,7 +120,7 @@ struct peer {
 	struct node_id node_ids[NUM_SIDES];
 	struct short_channel_id short_channel_ids[NUM_SIDES];
 	secp256k1_ecdsa_signature announcement_node_sigs[NUM_SIDES];
-	secp256k1_ecdsa_signature announcement_bitcoin_sigs[NUM_SIDES];
+	secp256k1_ecdsa_signature announcement_zcore_sigs[NUM_SIDES];
 	bool have_sigs[NUM_SIDES];
 
 	/* Which direction of the channel do we control? */
@@ -274,7 +274,7 @@ static struct amount_msat advertized_htlc_max(const struct channel *channel)
 		 * ...
 		 *   - if the `htlc_maximum_msat` field is present:
 		 * ...
-		 *         - for channels with `chain_hash` identifying the Bitcoin blockchain:
+		 *         - for channels with `chain_hash` identifying the ZCore blockchain:
 		 * 			 - MUST set this to less than 2^32.
 		 */
 		lower_bound_msat = channel->chainparams->max_payment;
@@ -348,7 +348,7 @@ static void send_announcement_signatures(struct peer *peer)
 	msg = hsm_req(tmpctx, req);
 	if (!fromwire_hsm_cannouncement_sig_reply(msg,
 				  &peer->announcement_node_sigs[LOCAL],
-				  &peer->announcement_bitcoin_sigs[LOCAL]))
+				  &peer->announcement_zcore_sigs[LOCAL]))
 		status_failed(STATUS_FAIL_HSM_IO,
 			      "Reading cannouncement_sig_resp: %s",
 			      strerror(errno));
@@ -369,19 +369,19 @@ static void send_announcement_signatures(struct peer *peer)
 			      "HSM returned an invalid node signature");
 	}
 
-	if (!check_signed_hash(&hash, &peer->announcement_bitcoin_sigs[LOCAL],
+	if (!check_signed_hash(&hash, &peer->announcement_zcore_sigs[LOCAL],
 			       &peer->channel->funding_pubkey[LOCAL])) {
 		/* It's ok to fail here, the channel announcement is
 		 * unique, unlike the channel update which may have
 		 * been replaced in the meantime. */
 		status_failed(STATUS_FAIL_HSM_IO,
-			      "HSM returned an invalid bitcoin signature");
+			      "HSM returned an invalid zcore signature");
 	}
 
 	msg = towire_announcement_signatures(
 	    NULL, &peer->channel_id, &peer->short_channel_ids[LOCAL],
 	    &peer->announcement_node_sigs[LOCAL],
-	    &peer->announcement_bitcoin_sigs[LOCAL]);
+	    &peer->announcement_zcore_sigs[LOCAL]);
 	sync_crypto_write(peer->pps, take(msg));
 }
 
@@ -404,8 +404,8 @@ static u8 *create_channel_announcement(const tal_t *ctx, struct peer *peer)
 	cannounce = towire_channel_announcement(
 	    ctx, &peer->announcement_node_sigs[first],
 	    &peer->announcement_node_sigs[second],
-	    &peer->announcement_bitcoin_sigs[first],
-	    &peer->announcement_bitcoin_sigs[second],
+	    &peer->announcement_zcore_sigs[first],
+	    &peer->announcement_zcore_sigs[second],
 	    features,
 	    &peer->chain_hash,
 	    &peer->short_channel_ids[LOCAL],
@@ -500,7 +500,7 @@ static void channel_announcement_negotiate(struct peer *peer)
 		wire_sync_write(MASTER_FD,
 			        take(towire_channel_got_announcement(NULL,
 			        &peer->announcement_node_sigs[REMOTE],
-			        &peer->announcement_bitcoin_sigs[REMOTE])));
+			        &peer->announcement_zcore_sigs[REMOTE])));
 
 		/* Give other nodes time to notice new block. */
 		notleak(new_reltimer(&peer->timers, peer,
@@ -559,7 +559,7 @@ static void handle_peer_announcement_signatures(struct peer *peer, const u8 *msg
 					      &chanid,
 					      &peer->short_channel_ids[REMOTE],
 					      &peer->announcement_node_sigs[REMOTE],
-					      &peer->announcement_bitcoin_sigs[REMOTE]))
+					      &peer->announcement_zcore_sigs[REMOTE]))
 		peer_failed(peer->pps,
 			    &peer->channel_id,
 			    "Bad announcement_signatures %s",
@@ -668,7 +668,7 @@ static void handle_peer_feechange(struct peer *peer, const u8 *msg)
 	 *
 	 * A receiving node:
 	 *...
-	 *  - if the sender is not responsible for paying the Bitcoin fee:
+	 *  - if the sender is not responsible for paying the ZCore fee:
 	 *    - MUST fail the channel.
 	 */
 	if (peer->channel->funder != REMOTE)
@@ -726,7 +726,7 @@ static u8 *sending_commitsig_msg(const tal_t *ctx,
 				 u64 remote_commit_index,
 				 u32 remote_feerate,
 				 const struct htlc **changed_htlcs,
-				 const struct bitcoin_signature *commit_sig,
+				 const struct zcore_signature *commit_sig,
 				 const secp256k1_ecdsa_signature *htlc_sigs)
 {
 	struct changed_htlc *changed;
@@ -977,10 +977,10 @@ done:
 static secp256k1_ecdsa_signature *calc_commitsigs(const tal_t *ctx,
 						  const struct peer *peer,
 						  u64 commit_index,
-						  struct bitcoin_signature *commit_sig)
+						  struct zcore_signature *commit_sig)
 {
 	size_t i;
-	struct bitcoin_tx **txs;
+	struct zcore_tx **txs;
 	const u8 **wscripts;
 	const struct htlc **htlc_map;
 	struct pubkey local_htlckey;
@@ -1003,9 +1003,9 @@ static secp256k1_ecdsa_signature *calc_commitsigs(const tal_t *ctx,
 
 	status_debug("Creating commit_sig signature %"PRIu64" %s for tx %s wscript %s key %s",
 		     commit_index,
-		     type_to_string(tmpctx, struct bitcoin_signature,
+		     type_to_string(tmpctx, struct zcore_signature,
 				    commit_sig),
-		     type_to_string(tmpctx, struct bitcoin_tx, txs[0]),
+		     type_to_string(tmpctx, struct zcore_tx, txs[0]),
 		     tal_hex(tmpctx, wscripts[0]),
 		     type_to_string(tmpctx, struct pubkey,
 				    &peer->channel->funding_pubkey[LOCAL]));
@@ -1027,7 +1027,7 @@ static secp256k1_ecdsa_signature *calc_commitsigs(const tal_t *ctx,
 	htlc_sigs = tal_arr(ctx, secp256k1_ecdsa_signature, tal_count(txs) - 1);
 
 	for (i = 0; i < tal_count(htlc_sigs); i++) {
-		struct bitcoin_signature sig;
+		struct zcore_signature sig;
 		msg = towire_hsm_sign_remote_htlc_tx(NULL, txs[i + 1],
 						     wscripts[i + 1],
 						     *txs[i+1]->input_amounts[0],
@@ -1041,9 +1041,9 @@ static secp256k1_ecdsa_signature *calc_commitsigs(const tal_t *ctx,
 
 		htlc_sigs[i] = sig.s;
 		status_debug("Creating HTLC signature %s for tx %s wscript %s key %s",
-			     type_to_string(tmpctx, struct bitcoin_signature,
+			     type_to_string(tmpctx, struct zcore_signature,
 					    &sig),
-			     type_to_string(tmpctx, struct bitcoin_tx, txs[1+i]),
+			     type_to_string(tmpctx, struct zcore_tx, txs[1+i]),
 			     tal_hex(tmpctx, wscripts[1+i]),
 			     type_to_string(tmpctx, struct pubkey,
 					    &local_htlckey));
@@ -1080,7 +1080,7 @@ static void send_commit(struct peer *peer)
 {
 	u8 *msg;
 	const struct htlc **changed_htlcs;
-	struct bitcoin_signature commit_sig;
+	struct zcore_signature commit_sig;
 	secp256k1_ecdsa_signature *htlc_sigs;
 
 #if DEVELOPER
@@ -1278,10 +1278,10 @@ static void send_revocation(struct peer *peer)
 static u8 *got_commitsig_msg(const tal_t *ctx,
 			     u64 local_commit_index,
 			     u32 local_feerate,
-			     const struct bitcoin_signature *commit_sig,
+			     const struct zcore_signature *commit_sig,
 			     const secp256k1_ecdsa_signature *htlc_sigs,
 			     const struct htlc **changed_htlcs,
-			     const struct bitcoin_tx *committx)
+			     const struct zcore_tx *committx)
 {
 	struct changed_htlc *changed;
 	struct fulfilled_htlc *fulfilled;
@@ -1362,10 +1362,10 @@ static u8 *got_commitsig_msg(const tal_t *ctx,
 static void handle_peer_commit_sig(struct peer *peer, const u8 *msg)
 {
 	struct channel_id channel_id;
-	struct bitcoin_signature commit_sig;
+	struct zcore_signature commit_sig;
 	secp256k1_ecdsa_signature *htlc_sigs;
 	struct pubkey remote_htlckey;
-	struct bitcoin_tx **txs;
+	struct zcore_tx **txs;
 	const struct htlc **htlc_map, **changed_htlcs;
 	const u8 **wscripts;
 	size_t i;
@@ -1434,9 +1434,9 @@ static void handle_peer_commit_sig(struct peer *peer, const u8 *msg)
 			    &peer->channel_id,
 			    "Bad commit_sig signature %"PRIu64" %s for tx %s wscript %s key %s feerate %u",
 			    peer->next_index[LOCAL],
-			    type_to_string(msg, struct bitcoin_signature,
+			    type_to_string(msg, struct zcore_signature,
 					   &commit_sig),
-			    type_to_string(msg, struct bitcoin_tx, txs[0]),
+			    type_to_string(msg, struct zcore_tx, txs[0]),
 			    tal_hex(msg, wscripts[0]),
 			    type_to_string(msg, struct pubkey,
 					   &peer->channel->funding_pubkey
@@ -1465,7 +1465,7 @@ static void handle_peer_commit_sig(struct peer *peer, const u8 *msg)
 	 *     - MUST fail the channel.
 	 */
 	for (i = 0; i < tal_count(htlc_sigs); i++) {
-		struct bitcoin_signature sig;
+		struct zcore_signature sig;
 
 		/* SIGHASH_ALL is implied. */
 		sig.s = htlc_sigs[i];
@@ -1476,8 +1476,8 @@ static void handle_peer_commit_sig(struct peer *peer, const u8 *msg)
 			peer_failed(peer->pps,
 				    &peer->channel_id,
 				    "Bad commit_sig signature %s for htlc %s wscript %s key %s",
-				    type_to_string(msg, struct bitcoin_signature, &sig),
-				    type_to_string(msg, struct bitcoin_tx, txs[1+i]),
+				    type_to_string(msg, struct zcore_signature, &sig),
+				    type_to_string(msg, struct zcore_tx, txs[1+i]),
 				    tal_hex(msg, wscripts[1+i]),
 				    type_to_string(msg, struct pubkey,
 						   &remote_htlckey));
@@ -1947,7 +1947,7 @@ static void send_fail_or_fulfill(struct peer *peer, const struct htlc *h)
 static void resend_commitment(struct peer *peer, const struct changed_htlc *last)
 {
 	size_t i;
-	struct bitcoin_signature commit_sig;
+	struct zcore_signature commit_sig;
 	secp256k1_ecdsa_signature *htlc_sigs;
 	u8 *msg;
 
@@ -2684,7 +2684,7 @@ static void handle_feerates(struct peer *peer, const u8 *inmsg)
 
 	/* BOLT #2:
 	 *
-	 * The node _responsible_ for paying the Bitcoin fee:
+	 * The node _responsible_ for paying the ZCore fee:
 	 *   - SHOULD send `update_fee` to ensure the current fee rate is
 	 *    sufficient (by a significant margin) for timely processing of the
 	 *     commitment transaction.
@@ -2695,7 +2695,7 @@ static void handle_feerates(struct peer *peer, const u8 *inmsg)
 	} else {
 		/* BOLT #2:
 		 *
-		 * The node _not responsible_ for paying the Bitcoin fee:
+		 * The node _not responsible_ for paying the ZCore fee:
 		 *  - MUST NOT send `update_fee`.
 		 */
 		/* FIXME: We could drop to chain if fees are too low, but
@@ -2927,7 +2927,7 @@ static void init_channel(struct peer *peer)
 	struct amount_msat local_msat;
 	struct pubkey funding_pubkey[NUM_SIDES];
 	struct channel_config conf[NUM_SIDES];
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	enum side funder;
 	enum htlc_state *hstates;
 	struct fulfilled_htlc *fulfilled;
@@ -2942,7 +2942,7 @@ static void init_channel(struct peer *peer)
 	u32 minimum_depth, failheight;
 	struct secret last_remote_per_commit_secret;
 	secp256k1_ecdsa_signature *remote_ann_node_sig;
-	secp256k1_ecdsa_signature *remote_ann_bitcoin_sig;
+	secp256k1_ecdsa_signature *remote_ann_zcore_sig;
 	bool option_static_remotekey;
 
 	assert(!(fcntl(MASTER_FD, F_GETFL) & O_NONBLOCK));
@@ -3001,7 +3001,7 @@ static void init_channel(struct peer *peer)
 				   &peer->features,
 				   &peer->remote_upfront_shutdown_script,
 				   &remote_ann_node_sig,
-				   &remote_ann_bitcoin_sig,
+				   &remote_ann_zcore_sig,
 				   &option_static_remotekey,
 				   &dev_fast_gossip)) {
 					   master_badmsg(WIRE_CHANNEL_INIT, msg);
@@ -3027,9 +3027,9 @@ static void init_channel(struct peer *peer)
 
 	status_debug("option_static_remotekey = %u", option_static_remotekey);
 
-	if(remote_ann_node_sig && remote_ann_bitcoin_sig) {
+	if(remote_ann_node_sig && remote_ann_zcore_sig) {
 		peer->announcement_node_sigs[REMOTE] = *remote_ann_node_sig;
-		peer->announcement_bitcoin_sigs[REMOTE] = *remote_ann_bitcoin_sig;
+		peer->announcement_zcore_sigs[REMOTE] = *remote_ann_zcore_sig;
 		peer->have_sigs[REMOTE] = true;
 
 		/* Before we store announcement into DB, we have made sure
@@ -3085,7 +3085,7 @@ static void init_channel(struct peer *peer)
 	tal_free(failed);
 	tal_free(failed_sides);
 	tal_free(remote_ann_node_sig);
-	tal_free(remote_ann_bitcoin_sig);
+	tal_free(remote_ann_zcore_sig);
 
 	peer->channel_direction = node_id_idx(&peer->node_ids[LOCAL],
 					      &peer->node_ids[REMOTE]);
@@ -3157,8 +3157,8 @@ int main(int argc, char *argv[])
 	for (i = 0; i < NUM_SIDES; i++) {
 		memset(&peer->announcement_node_sigs[i], 0,
 		       sizeof(peer->announcement_node_sigs[i]));
-		memset(&peer->announcement_bitcoin_sigs[i], 0,
-		       sizeof(peer->announcement_bitcoin_sigs[i]));
+		memset(&peer->announcement_zcore_sigs[i], 0,
+		       sizeof(peer->announcement_zcore_sigs[i]));
 	}
 
 	/* Read init_channel message sync. */

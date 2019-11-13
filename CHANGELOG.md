@@ -21,14 +21,14 @@ Note: You should always set `allow-deprecated-apis=false` to test for changes.
 ### Security
 
 
-## [0.7.3] - 2019-10-18: "Bitcoin's Proof of Stake"
+## [0.7.3] - 2019-10-18: "ZCore's Proof of Stake"
 
 This release named by @trueptolemy.
 
 ### Added
 
 - DB: lightningd now supports different SQL backends, instead of the default which is sqlite3. Adds a PostgresSQL driver
-- elements: Add support of Liquid-BTC on elements
+- elements: Add support of Liquid-ZCR on elements
 - JSON API: `close` now accepts an optional parameter `destination`, to which the to-local output will be sent.
 - JSON API: `txprepare` and `withdraw` now accept an optional parameter `utxos`, a list of utxos to include in the prepared transaction
 - JSON API: `listfunds` now lists a blockheight for confirmed transactions, and has `connected` and `state` fields for channels, like `listpeers`.
@@ -108,7 +108,7 @@ This release named by Antoine Poinsot @darosior.
 - Build: now requires `python3-mako` to be installed, i.e. `sudo apt-get install python3-mako`
 - JSON API: `close` optional arguments have changed: it now defaults to unilateral close after 48 hours.
 - Plugin: if the config directory has a `plugins` subdirectory, those are loaded.
-- lightningd: check bitcoind version when setup topology and confirm the version not older than v0.15.0.
+- lightningd: check zcored version when setup topology and confirm the version not older than v0.15.0.
 - Protocol: space out reconnections on startup if we have more than 5 peers.
 - JSON API: `listforwards` includes the 'payment_hash' field.
 - Plugin: now plugins always run from the `lightning-dir` for easy local storage.
@@ -130,7 +130,7 @@ changes.
 - channeld: ignore, and simply try reconnecting if lnd sends "sync error".
 - Protocol: we now correctly ignore unknown odd messages.
 - wallet: We will now backfill blocks below our wallet start height on demand when we require them to verify gossip messages. This fixes an issue where we would not remove channels on spend that were opened below that start height because we weren't tracking the funding output.
-- Detect when we're still syncing with bitcoin network: don't send or receive
+- Detect when we're still syncing with zcore network: don't send or receive
   HTLCs or allow `fundchannel`.
 - Rare onchaind error where we don't recover our own unilateral close with multiple same-preimage HTLCs fixed.
 
@@ -168,7 +168,7 @@ This release named by (C-Lightning Core Team member) Lisa Neigut @niftynei.
 - JSON API: A new parameter is added to `fundchannel`, which now accepts an utxo array to use to fund the channel.
 - Build: Non-developer builds are now done with "-Og" optimization.
 - JSON API: `pay` will no longer return failure until it is no longer retrying; previously it could "timeout" but still make the payment.
-- JSON API: the command objects that `help` outputs now contain a new string field : `category` (can be "bitcoin", "channels", "network", "payment", "plugins", "utility", "developer" for native commands, or any other new category set by a plugin).
+- JSON API: the command objects that `help` outputs now contain a new string field : `category` (can be "zcore", "channels", "network", "payment", "plugins", "utility", "developer" for native commands, or any other new category set by a plugin).
 - Plugin: a plugin can now set the category of a newly created RPC command. This possibility has been added to libplugin.c and pylightning.
 - lightning-cli: the human readable help is now more human and more readable : commands are sorted alphabetically and ordered by categories.
 
@@ -277,7 +277,7 @@ provide appropriate suffixes for JSON input fields.
 - CLTV of total route now correctly evaluated when finding best route.
 - `riskfactor` arguments to `pay` and `getroute` now have an effect.
 - Fixed the version of bip32 private_key to BIP32_VER_MAIN_PRIVATE: we used
-  BIP32_VER_MAIN_PRIVATE for bitcoin/litecoin mainnet, and BIP32_VER_TEST_PRIVATE
+  BIP32_VER_MAIN_PRIVATE for zcore/litecoin mainnet, and BIP32_VER_TEST_PRIVATE
   for others. (PR #2436)
 
 ### Security
@@ -342,8 +342,8 @@ This release named by practicalswift.
 - JSON API: `invoice` now adds route hint to invoices for incoming capacity (RouteBoost), and warns if insufficient capacity.
 - JSON API: `listforwards` lists all forwarded payments, their associated channels, and fees.
 - JSON API: `getinfo` shows forwarding fees earnt as `msatoshi_fees_collected`.
-- Bitcoind: more parallelism in requests, for very slow nodes.
-- Testing: fixed logging, cleaner interception of bitcoind, minor fixes.
+- ZCored: more parallelism in requests, for very slow nodes.
+- Testing: fixed logging, cleaner interception of zcored, minor fixes.
 - Protocol: we set and handle the new `htlc_maximum_msat` channel_update field.
 
 ### Changed
@@ -430,7 +430,7 @@ This release named by ZmnSCPxj.
   the one given or the first one announced.
 - Crash logs are now placed one-per file like `crash.log.20180822233752`
 - We will no longer allow withdrawing funds or funding channels if we
-  do not have a fee estimate (eg. bitcoind not synced); use new `feerate` arg.
+  do not have a fee estimate (eg. zcored not synced); use new `feerate` arg.
 
 ### Deprecated
 
@@ -509,9 +509,9 @@ There predate the BOLT specifications, and are only of vague historic interest:
 2. [0.2] - 2016-01-22: "Butterfly Labs' Timely Delivery" (named by Anthony Towns)
 3. [0.3] - 2016-05-25: "Nakamoto's Genesis Coins" (named by Braydon Fuller)
 4. [0.4] - 2016-08-19: "Wright's Cryptographic Proof" (named by Christian Decker)
-5. [0.5] - 2016-10-19: "Bitcoin Savings & Trust Daily Interest" (named by Glenn Willen)
+5. [0.5] - 2016-10-19: "ZCore Savings & Trust Daily Interest" (named by Glenn Willen)
 6. [0.5.1] - 2016-10-21
-7. [0.5.2] - 2016-11-21: "Bitcoin Savings & Trust Daily Interest II"
+7. [0.5.2] - 2016-11-21: "ZCore Savings & Trust Daily Interest II"
 
 [Unreleased]: https://github.com/ElementsProject/lightning/compare/v0.7.3...HEAD
 [0.7.3]: https://github.com/ElementsProject/lightning/releases/tag/v0.7.3

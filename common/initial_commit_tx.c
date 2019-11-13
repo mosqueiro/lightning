@@ -1,5 +1,5 @@
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/endian/endian.h>
 #include <common/initial_commit_tx.h>
 #include <common/keyset.h>
@@ -53,14 +53,14 @@ u8 *to_self_wscript(const tal_t *ctx,
 		    u16 to_self_delay,
 		    const struct keyset *keyset)
 {
-	return bitcoin_wscript_to_local(ctx, to_self_delay,
+	return zcore_wscript_to_local(ctx, to_self_delay,
 					&keyset->self_revocation_key,
 					&keyset->self_delayed_payment_key);
 }
 
-struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
+struct zcore_tx *initial_commit_tx(const tal_t *ctx,
 				     const struct chainparams *chainparams,
-				     const struct bitcoin_txid *funding_txid,
+				     const struct zcore_txid *funding_txid,
 				     unsigned int funding_txout,
 				     struct amount_sat funding,
 				     enum side funder,
@@ -76,7 +76,7 @@ struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
 				     char** err_reason)
 {
 	struct amount_sat base_fee;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	size_t n, untrimmed;
 	struct amount_msat total_pay;
 	struct amount_sat amount;
@@ -146,7 +146,7 @@ struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
 
 
 	/* Worst-case sizing: both to-local and to-remote outputs. */
-	tx = bitcoin_tx(ctx, chainparams, 1, untrimmed + 2);
+	tx = zcore_tx(ctx, chainparams, 1, untrimmed + 2);
 
 	/* This could be done in a single loop, but we follow the BOLT
 	 * literally to make comments in test vectors clearer. */
@@ -173,7 +173,7 @@ struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
 	if (amount_msat_greater_eq_sat(self_pay, dust_limit)) {
 		u8 *wscript = to_self_wscript(tmpctx, to_self_delay, keyset);
 		amount = amount_msat_to_sat_round_down(self_pay);
-		int pos = bitcoin_tx_add_output(
+		int pos = zcore_tx_add_output(
 		    tx, scriptpubkey_p2wsh(tx, wscript), amount);
 		assert(pos == n);
 		n++;
@@ -194,7 +194,7 @@ struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
 		 * P2WPKH to `remotepubkey`.
 		 */
 		amount = amount_msat_to_sat_round_down(other_pay);
-		int pos = bitcoin_tx_add_output(
+		int pos = zcore_tx_add_output(
 		    tx, scriptpubkey_p2wpkh(tx, &keyset->other_payment_key),
 		    amount);
 		assert(pos == n);
@@ -235,10 +235,10 @@ struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
 	 *    * `txin[0]` script bytes: 0
 	 */
 	sequence = (0x80000000 | ((obscured_commitment_number>>24) & 0xFFFFFF));
-	bitcoin_tx_add_input(tx, funding_txid, funding_txout, sequence, funding, NULL);
+	zcore_tx_add_input(tx, funding_txid, funding_txout, sequence, funding, NULL);
 
 	elements_tx_add_fee_output(tx);
-	assert(bitcoin_tx_check(tx));
+	assert(zcore_tx_check(tx));
 
 	return tx;
 }

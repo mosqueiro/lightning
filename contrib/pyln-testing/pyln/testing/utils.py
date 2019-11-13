@@ -1,5 +1,5 @@
-from bitcoin.rpc import RawProxy as BitcoinProxy
-from pyln.testing.btcproxy import BitcoinRpcProxy
+from zcore.rpc import RawProxy as ZCoreProxy
+from pyln.testing.btcproxy import ZCoreRpcProxy
 from collections import OrderedDict
 from decimal import Decimal
 from ephemeral_port_reserve import reserve
@@ -21,7 +21,7 @@ import sys
 import threading
 import time
 
-BITCOIND_CONFIG = {
+ZCORED_CONFIG = {
     "regtest": 1,
     "rpcuser": "rpcuser",
     "rpcpassword": "rpcpass",
@@ -102,8 +102,8 @@ def only_one(arr):
     return arr[0]
 
 
-def sync_blockheight(bitcoind, nodes):
-    height = bitcoind.rpc.getblockchaininfo()['blocks']
+def sync_blockheight(zcored, nodes):
+    height = zcored.rpc.getblockchaininfo()['blocks']
     for n in nodes:
         wait_for(lambda: n.rpc.getinfo()['blockheight'] == height)
 
@@ -113,9 +113,9 @@ def wait_channel_quiescent(n1, n2):
     wait_for(lambda: only_one(only_one(n2.rpc.listpeers(n1.info['id'])['peers'])['channels'])['htlcs'] == [])
 
 
-def get_tx_p2wsh_outnum(bitcoind, tx, amount):
+def get_tx_p2wsh_outnum(zcored, tx, amount):
     """Get output number of this tx which is p2wsh of amount"""
-    decoded = bitcoind.rpc.decoderawtransaction(tx, True)
+    decoded = zcored.rpc.decoderawtransaction(tx, True)
 
     for out in decoded['vout']:
         if out['scriptPubKey']['type'] == 'witness_v0_scripthash':
@@ -271,11 +271,11 @@ class TailableProc(object):
         return self.wait_for_logs([regex], timeout)
 
 
-class SimpleBitcoinProxy:
-    """Wrapper for BitcoinProxy to reconnect.
+class SimpleZCoreProxy:
+    """Wrapper for ZCoreProxy to reconnect.
 
-    Long wait times between calls to the Bitcoin RPC could result in
-    `bitcoind` closing the connection, so here we just create
+    Long wait times between calls to the ZCore RPC could result in
+    `zcored` closing the connection, so here we just create
     throwaway connections. This is easier than to reach into the RPC
     library to close, reopen and reauth upon failure.
     """
@@ -288,36 +288,36 @@ class SimpleBitcoinProxy:
             raise AttributeError
 
         # Create a callable to do the actual call
-        proxy = BitcoinProxy(btc_conf_file=self.__btc_conf_file__)
+        proxy = ZCoreProxy(btc_conf_file=self.__btc_conf_file__)
 
         def f(*args):
             return proxy._call(name, *args)
 
-        # Make debuggers show <function bitcoin.rpc.name> rather than <function
-        # bitcoin.rpc.<lambda>>
+        # Make debuggers show <function zcore.rpc.name> rather than <function
+        # zcore.rpc.<lambda>>
         f.__name__ = name
         return f
 
 
-class BitcoinD(TailableProc):
+class ZCoreD(TailableProc):
 
-    def __init__(self, bitcoin_dir="/tmp/bitcoind-test", rpcport=None):
-        TailableProc.__init__(self, bitcoin_dir, verbose=False)
+    def __init__(self, zcore_dir="/tmp/zcored-test", rpcport=None):
+        TailableProc.__init__(self, zcore_dir, verbose=False)
 
         if rpcport is None:
             rpcport = reserve()
 
-        self.bitcoin_dir = bitcoin_dir
+        self.zcore_dir = zcore_dir
         self.rpcport = rpcport
-        self.prefix = 'bitcoind'
+        self.prefix = 'zcored'
 
-        regtestdir = os.path.join(bitcoin_dir, 'regtest')
+        regtestdir = os.path.join(zcore_dir, 'regtest')
         if not os.path.exists(regtestdir):
             os.makedirs(regtestdir)
 
         self.cmd_line = [
-            'bitcoind',
-            '-datadir={}'.format(bitcoin_dir),
+            'zcored',
+            '-datadir={}'.format(zcore_dir),
             '-printtoconsole',
             '-server',
             '-logtimestamps',
@@ -326,20 +326,20 @@ class BitcoinD(TailableProc):
             '-addresstype=bech32'
         ]
         # For up to and including 0.16.1, this needs to be in main section.
-        BITCOIND_CONFIG['rpcport'] = rpcport
+        ZCORED_CONFIG['rpcport'] = rpcport
         # For after 0.16.1 (eg. 3f398d7a17f136cd4a67998406ca41a124ae2966), this
         # needs its own [regtest] section.
-        BITCOIND_REGTEST = {'rpcport': rpcport}
-        self.conf_file = os.path.join(bitcoin_dir, 'bitcoin.conf')
-        write_config(self.conf_file, BITCOIND_CONFIG, BITCOIND_REGTEST)
-        self.rpc = SimpleBitcoinProxy(btc_conf_file=self.conf_file)
+        ZCORED_REGTEST = {'rpcport': rpcport}
+        self.conf_file = os.path.join(zcore_dir, 'zcore.conf')
+        write_config(self.conf_file, ZCORED_CONFIG, ZCORED_REGTEST)
+        self.rpc = SimpleZCoreProxy(btc_conf_file=self.conf_file)
         self.proxies = []
 
     def start(self):
         TailableProc.start(self)
         self.wait_for_log("Done loading", timeout=TIMEOUT)
 
-        logging.info("BitcoinD started")
+        logging.info("ZCoreD started")
 
     def stop(self):
         for p in self.proxies:
@@ -348,7 +348,7 @@ class BitcoinD(TailableProc):
         return TailableProc.stop(self)
 
     def get_proxy(self):
-        proxy = BitcoinRpcProxy(self)
+        proxy = ZCoreRpcProxy(self)
         self.proxies.append(proxy)
         proxy.start()
         return proxy
@@ -416,18 +416,18 @@ class BitcoinD(TailableProc):
         return self.rpc.getnewaddress()
 
 
-class ElementsD(BitcoinD):
-    def __init__(self, bitcoin_dir="/tmp/bitcoind-test", rpcport=None):
-        config = BITCOIND_CONFIG.copy()
+class ElementsD(ZCoreD):
+    def __init__(self, zcore_dir="/tmp/zcored-test", rpcport=None):
+        config = ZCORED_CONFIG.copy()
         if 'regtest' in config:
             del config['regtest']
 
         config['chain'] = 'liquid-regtest'
-        BitcoinD.__init__(self, bitcoin_dir, rpcport)
+        ZCoreD.__init__(self, zcore_dir, rpcport)
 
         self.cmd_line = [
             'elementsd',
-            '-datadir={}'.format(bitcoin_dir),
+            '-datadir={}'.format(zcore_dir),
             '-printtoconsole',
             '-server',
             '-logtimestamps',
@@ -435,12 +435,12 @@ class ElementsD(BitcoinD):
             '-validatepegin=0',
             '-con_blocksubsidy=5000000000',
         ]
-        conf_file = os.path.join(bitcoin_dir, 'elements.conf')
+        conf_file = os.path.join(zcore_dir, 'elements.conf')
         config['rpcport'] = self.rpcport
-        BITCOIND_REGTEST = {'rpcport': self.rpcport}
-        write_config(conf_file, config, BITCOIND_REGTEST, section_name='liquid-regtest')
+        ZCORED_REGTEST = {'rpcport': self.rpcport}
+        write_config(conf_file, config, ZCORED_REGTEST, section_name='liquid-regtest')
         self.conf_file = conf_file
-        self.rpc = SimpleBitcoinProxy(btc_conf_file=self.conf_file)
+        self.rpc = SimpleZCoreProxy(btc_conf_file=self.conf_file)
         self.prefix = 'elementsd'
 
     def generate_block(self, numblocks=1, wait_for_mempool=0):
@@ -463,7 +463,7 @@ class ElementsD(BitcoinD):
 
 
 class LightningD(TailableProc):
-    def __init__(self, lightning_dir, bitcoindproxy, port=9735, random_hsm=False, node_id=0):
+    def __init__(self, lightning_dir, zcoredproxy, port=9735, random_hsm=False, node_id=0):
         TailableProc.__init__(self, lightning_dir)
         self.executable = 'lightningd'
         self.lightning_dir = lightning_dir
@@ -471,7 +471,7 @@ class LightningD(TailableProc):
         self.cmd_prefix = []
         self.disconnect_file = None
 
-        self.rpcproxy = bitcoindproxy
+        self.rpcproxy = zcoredproxy
 
         self.opts = LIGHTNINGD_CONFIG.copy()
         opts = {
@@ -480,8 +480,8 @@ class LightningD(TailableProc):
             'allow-deprecated-apis': 'false',
             'network': env('TEST_NETWORK', 'regtest'),
             'ignore-fee-limits': 'false',
-            'bitcoin-rpcuser': BITCOIND_CONFIG['rpcuser'],
-            'bitcoin-rpcpassword': BITCOIND_CONFIG['rpcpassword'],
+            'zcore-rpcuser': ZCORED_CONFIG['rpcuser'],
+            'zcore-rpcpassword': ZCORED_CONFIG['rpcpassword'],
         }
 
         for k, v in opts.items():
@@ -497,7 +497,7 @@ class LightningD(TailableProc):
                 f.write(seed)
         if DEVELOPER:
             self.opts['dev-fast-gossip'] = None
-            self.opts['dev-bitcoind-poll'] = 1
+            self.opts['dev-zcored-poll'] = 1
         self.prefix = 'lightningd-%d' % (node_id)
 
     def cleanup(self):
@@ -523,7 +523,7 @@ class LightningD(TailableProc):
 
     def start(self, stdin=None, stdout=None, stderr=None,
               wait_for_initialized=True):
-        self.opts['bitcoin-rpcport'] = self.rpcproxy.rpcport
+        self.opts['zcore-rpcport'] = self.rpcproxy.rpcport
         TailableProc.start(self, stdin, stdout, stderr)
         if wait_for_initialized:
             self.wait_for_log("Server started with public key")
@@ -540,10 +540,10 @@ class LightningD(TailableProc):
 
 
 class LightningNode(object):
-    def __init__(self, node_id, lightning_dir, bitcoind, executor, may_fail=False,
+    def __init__(self, node_id, lightning_dir, zcored, executor, may_fail=False,
                  may_reconnect=False, allow_broken_log=False,
                  allow_bad_gossip=False, db=None, port=None, disconnect=None, random_hsm=None, log_all_io=None, options=None, **kwargs):
-        self.bitcoin = bitcoind
+        self.zcore = zcored
         self.executor = executor
         self.may_fail = may_fail
         self.may_reconnect = may_reconnect
@@ -555,7 +555,7 @@ class LightningNode(object):
         self.rpc = LightningRpc(socket_path, self.executor)
 
         self.daemon = LightningD(
-            lightning_dir, bitcoindproxy=bitcoind.get_proxy(),
+            lightning_dir, zcoredproxy=zcored.get_proxy(),
             port=port, random_hsm=random_hsm, node_id=node_id
         )
         # If we have a disconnect string, dump it to a file for daemon.
@@ -588,7 +588,7 @@ class LightningNode(object):
                 'valgrind',
                 '-q',
                 '--trace-children=yes',
-                '--trace-children-skip=*python*,*bitcoin-cli*,*elements-cli*',
+                '--trace-children-skip=*python*,*zcore-cli*,*elements-cli*',
                 '--error-exitcode=7',
                 '--log-file={}/valgrind-errors.%p'.format(self.daemon.lightning_dir)
             ]
@@ -607,14 +607,14 @@ class LightningNode(object):
 
         fundingtx = self.rpc.fundchannel(remote_node.info['id'], capacity)
 
-        # Wait for the funding transaction to be in bitcoind's mempool
-        wait_for(lambda: fundingtx['txid'] in self.bitcoin.rpc.getrawmempool())
+        # Wait for the funding transaction to be in zcored's mempool
+        wait_for(lambda: fundingtx['txid'] in self.zcore.rpc.getrawmempool())
 
         if confirm or wait_for_announce:
-            self.bitcoin.generate_block(1)
+            self.zcore.generate_block(1)
 
         if wait_for_announce:
-            self.bitcoin.generate_block(5)
+            self.zcore.generate_block(5)
 
         if confirm or wait_for_announce:
             self.daemon.wait_for_log(
@@ -623,8 +623,8 @@ class LightningNode(object):
 
     def fundwallet(self, sats, addrtype="p2sh-segwit"):
         addr = self.rpc.newaddr(addrtype)[addrtype]
-        txid = self.bitcoin.rpc.sendtoaddress(addr, sats / 10**8)
-        self.bitcoin.generate_block(1)
+        txid = self.zcore.rpc.sendtoaddress(addr, sats / 10**8)
+        self.zcore.generate_block(1)
         self.daemon.wait_for_log('Owning output .* txid {} CONFIRMED'.format(txid))
         return addr, txid
 
@@ -644,19 +644,19 @@ class LightningNode(object):
         c.close()
         db.close()
 
-    def is_synced_with_bitcoin(self, info=None):
+    def is_synced_with_zcore(self, info=None):
         if info is None:
             info = self.rpc.getinfo()
-        return 'warning_bitcoind_sync' not in info and 'warning_lightningd_sync' not in info
+        return 'warning_zcored_sync' not in info and 'warning_lightningd_sync' not in info
 
-    def start(self, wait_for_bitcoind_sync=True):
+    def start(self, wait_for_zcored_sync=True):
         self.daemon.start()
         # Cache `getinfo`, we'll be using it a lot
         self.info = self.rpc.getinfo()
         # This shortcut is sufficient for our simple tests.
         self.port = self.info['binding'][0]['port']
-        if wait_for_bitcoind_sync and not self.is_synced_with_bitcoin(self.info):
-            wait_for(lambda: self.is_synced_with_bitcoin())
+        if wait_for_zcored_sync and not self.is_synced_with_zcore(self.info):
+            wait_for(lambda: self.is_synced_with_zcore())
 
     def stop(self, timeout=10):
         """ Attempt to do a clean shutdown, but kill if it hangs
@@ -701,21 +701,21 @@ class LightningNode(object):
 
         # Give yourself some funds to work with
         addr = self.rpc.newaddr()['bech32']
-        self.bitcoin.rpc.sendtoaddress(addr, (amount + 1000000) / 10**8)
+        self.zcore.rpc.sendtoaddress(addr, (amount + 1000000) / 10**8)
         numfunds = len(self.rpc.listfunds()['outputs'])
-        self.bitcoin.generate_block(1)
+        self.zcore.generate_block(1)
         wait_for(lambda: len(self.rpc.listfunds()['outputs']) > numfunds)
 
         # Now go ahead and open a channel
-        num_tx = len(self.bitcoin.rpc.getrawmempool())
+        num_tx = len(self.zcore.rpc.getrawmempool())
         tx = self.rpc.fundchannel(l2.info['id'], amount)['tx']
 
-        wait_for(lambda: len(self.bitcoin.rpc.getrawmempool()) == num_tx + 1)
-        self.bitcoin.generate_block(1)
+        wait_for(lambda: len(self.zcore.rpc.getrawmempool()) == num_tx + 1)
+        self.zcore.generate_block(1)
 
         # Hacky way to find our output.
-        scid = "{}x1x{}".format(self.bitcoin.rpc.getblockcount(),
-                                get_tx_p2wsh_outnum(self.bitcoin, tx, amount))
+        scid = "{}x1x{}".format(self.zcore.rpc.getblockcount(),
+                                get_tx_p2wsh_outnum(self.zcore, tx, amount))
 
         if wait_for_active:
             # We wait until gossipd sees both local updates, as well as status NORMAL,
@@ -771,7 +771,7 @@ class LightningNode(object):
 
     def wait_for_channel_onchain(self, peerid):
         txid = only_one(only_one(self.rpc.listpeers(peerid)['peers'])['channels'])['scratch_txid']
-        wait_for(lambda: txid in self.bitcoin.rpc.getrawmempool())
+        wait_for(lambda: txid in self.zcore.rpc.getrawmempool())
 
     def wait_channel_active(self, chanid):
         wait_for(lambda: self.is_channel_active(chanid))
@@ -828,7 +828,7 @@ class LightningNode(object):
     # Note: this feeds through the smoother in update_feerate, so changing
     # it on a running daemon may not give expected result!
     def set_feerates(self, feerates, wait_for_effect=True):
-        # (bitcoind returns bitcoin per kb, so these are * 4)
+        # (zcored returns zcore per kb, so these are * 4)
 
         def mock_estimatesmartfee(r):
             params = r['params']
@@ -864,9 +864,9 @@ class LightningNode(object):
                                          .format(name))
 
         rawtx = re.search(r'.* \(([0-9a-fA-F]*)\) ', r).group(1)
-        txid = self.bitcoin.rpc.decoderawtransaction(rawtx, True)['txid']
+        txid = self.zcore.rpc.decoderawtransaction(rawtx, True)['txid']
 
-        wait_for(lambda: txid in self.bitcoin.rpc.getrawmempool())
+        wait_for(lambda: txid in self.zcore.rpc.getrawmempool())
 
     def query_gossip(self, querytype, *args, filters=[]):
         """Generate a gossip query, feed it into this node and get responses
@@ -903,12 +903,12 @@ class LightningNode(object):
 class NodeFactory(object):
     """A factory to setup and start `lightningd` daemons.
     """
-    def __init__(self, testname, bitcoind, executor, directory, db_provider, node_cls):
+    def __init__(self, testname, zcored, executor, directory, db_provider, node_cls):
         self.testname = testname
         self.next_id = 1
         self.nodes = []
         self.executor = executor
-        self.bitcoind = bitcoind
+        self.zcored = zcored
         self.directory = directory
         self.lock = threading.Lock()
         self.db_provider = db_provider
@@ -929,7 +929,7 @@ class NodeFactory(object):
             'random_hsm',
             'log_all_io',
             'feerates',
-            'wait_for_bitcoind_sync',
+            'wait_for_zcored_sync',
             'allow_bad_gossip'
         ]
         node_opts = {k: v for k, v in opts.items() if k in node_opt_keys}
@@ -972,7 +972,7 @@ class NodeFactory(object):
 
     def get_node(self, node_id=None, options=None, dbfile=None,
                  feerates=(15000, 7500, 3750), start=True,
-                 wait_for_bitcoind_sync=True, **kwargs):
+                 wait_for_zcored_sync=True, **kwargs):
 
         node_id = self.get_node_id() if not node_id else node_id
         port = self.get_next_port()
@@ -987,7 +987,7 @@ class NodeFactory(object):
         # node.
         db = self.db_provider.get_db(lightning_dir, self.testname, node_id)
         node = self.node_cls(
-            node_id, lightning_dir, self.bitcoind, self.executor, db=db,
+            node_id, lightning_dir, self.zcored, self.executor, db=db,
             port=port, options=options, **kwargs
         )
 
@@ -1003,7 +1003,7 @@ class NodeFactory(object):
 
         if start:
             try:
-                node.start(wait_for_bitcoind_sync)
+                node.start(wait_for_zcored_sync)
             except Exception:
                 node.daemon.stop()
                 raise
@@ -1014,7 +1014,7 @@ class NodeFactory(object):
         """
         assert not (wait_for_announce and not announce_channels), "You've asked to wait for an announcement that's not coming. (wait_for_announce=True,announce_channels=False)"
         nodes = self.get_nodes(num_nodes, opts=opts)
-        bitcoin = nodes[0].bitcoin
+        zcore = nodes[0].zcore
         connections = [(nodes[i], nodes[i + 1]) for i in range(0, num_nodes - 1)]
 
         for src, dst in connections:
@@ -1030,16 +1030,16 @@ class NodeFactory(object):
         # If we got here, we want to fund channels
         for src, dst in connections:
             addr = src.rpc.newaddr()['bech32']
-            src.bitcoin.rpc.sendtoaddress(addr, (fundamount + 1000000) / 10**8)
+            src.zcore.rpc.sendtoaddress(addr, (fundamount + 1000000) / 10**8)
 
-        bitcoin.generate_block(1)
+        zcore.generate_block(1)
         for src, dst in connections:
             wait_for(lambda: len(src.rpc.listfunds()['outputs']) > 0)
             tx = src.rpc.fundchannel(dst.info['id'], fundamount, announce=announce_channels)
-            wait_for(lambda: tx['txid'] in bitcoin.rpc.getrawmempool())
+            wait_for(lambda: tx['txid'] in zcore.rpc.getrawmempool())
 
         # Confirm all channels and wait for them to become usable
-        bitcoin.generate_block(1)
+        zcore.generate_block(1)
         scids = []
         for src, dst in connections:
             wait_for(lambda: src.channel_state(dst) == 'CHANNELD_NORMAL')
@@ -1050,7 +1050,7 @@ class NodeFactory(object):
         if not wait_for_announce:
             return nodes
 
-        bitcoin.generate_block(5)
+        zcore.generate_block(5)
 
         def both_dirs_ready(n, scid):
             resp = n.rpc.listchannels(scid)

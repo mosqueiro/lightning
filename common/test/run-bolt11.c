@@ -173,7 +173,7 @@ int main(void)
 	 *
 	 * Breakdown:
 	 *
-	 * * `lnbc`: prefix, Lightning on Bitcoin mainnet
+	 * * `lnbc`: prefix, Lightning on ZCore mainnet
 	 * * `1`: Bech32 separator
 	 * * `pvjluez`: timestamp (1496314658)
 	 * * `p`: payment hash
@@ -186,7 +186,7 @@ int main(void)
 	 * * `ca784w`: Bech32 checksum
 	 */
 	b11 = new_bolt11(tmpctx, NULL);
-	b11->chain = chainparams_for_network("bitcoin");
+	b11->chain = chainparams_for_network("zcore");
 	b11->timestamp = 1496314658;
 	if (!hex_decode("0001020304050607080900010203040506070809000102030405060708090102",
 			strlen("0001020304050607080900010203040506070809000102030405060708090102"),
@@ -204,8 +204,8 @@ int main(void)
 	 *
 	 * Breakdown:
 	 *
-	 * * `lnbc`: prefix, Lightning on Bitcoin mainnet
-	 * * `2500u`: amount (2500 micro-bitcoin)
+	 * * `lnbc`: prefix, Lightning on ZCore mainnet
+	 * * `2500u`: amount (2500 micro-zcore)
 	 * * `1`: Bech32 separator
 	 * * `pvjluez`: timestamp (1496314658)
 	 * * `p`: payment hash...
@@ -220,7 +220,7 @@ int main(void)
 	 */
 	msatoshi = AMOUNT_MSAT(2500 * (1000ULL * 100000000) / 1000000);
 	b11 = new_bolt11(tmpctx, &msatoshi);
-	b11->chain = chainparams_for_network("bitcoin");
+	b11->chain = chainparams_for_network("zcore");
 	b11->timestamp = 1496314658;
 	if (!hex_decode("0001020304050607080900010203040506070809000102030405060708090102",
 			strlen("0001020304050607080900010203040506070809000102030405060708090102"),
@@ -239,8 +239,8 @@ int main(void)
 	 *
 	 * Breakdown:
 	 *
-	 * * `lnbc`: prefix, Lightning on Bitcoin mainnet
-	 * * `20m`: amount (20 milli-bitcoin)
+	 * * `lnbc`: prefix, Lightning on ZCore mainnet
+	 * * `20m`: amount (20 milli-zcore)
 	 * * `1`: Bech32 separator
 	 * * `pvjluez`: timestamp (1496314658)
 	 * * `p`: payment hash...
@@ -252,7 +252,7 @@ int main(void)
 	 */
 	msatoshi = AMOUNT_MSAT(20 * (1000ULL * 100000000) / 1000);
 	b11 = new_bolt11(tmpctx, &msatoshi);
-	b11->chain = chainparams_for_network("bitcoin");
+	b11->chain = chainparams_for_network("zcore");
 	b11->timestamp = 1496314658;
 	if (!hex_decode("0001020304050607080900010203040506070809000102030405060708090102",
 			strlen("0001020304050607080900010203040506070809000102030405060708090102"),
@@ -276,7 +276,7 @@ int main(void)
 	/* ALL UPPERCASE is allowed (useful for QR codes) */
 	msatoshi = AMOUNT_MSAT(2500 * (1000ULL * 100000000) / 1000000);
 	b11 = new_bolt11(tmpctx, &msatoshi);
-	b11->chain = chainparams_for_network("bitcoin");
+	b11->chain = chainparams_for_network("zcore");
 	b11->timestamp = 1496314658;
 	if (!hex_decode("0001020304050607080900010203040506070809000102030405060708090102",
 			strlen("0001020304050607080900010203040506070809000102030405060708090102"),
@@ -319,8 +319,8 @@ int main(void)
 	 *
 	 * Breakdown:
 	 *
-	 * * `lnbc`: prefix, Lightning on Bitcoin mainnet
-	 * * `25m`: amount (25 milli-bitcoin)
+	 * * `lnbc`: prefix, Lightning on ZCore mainnet
+	 * * `25m`: amount (25 milli-zcore)
 	 * * `1`: Bech32 separator
 	 * * `pvjluez`: timestamp (1496314658)
 	 * * `p`: payment hash...
@@ -335,7 +335,7 @@ int main(void)
 	 */
 	msatoshi = AMOUNT_MSAT(25 * (1000ULL * 100000000) / 1000);
 	b11 = new_bolt11(tmpctx, &msatoshi);
-	b11->chain = chainparams_for_network("bitcoin");
+	b11->chain = chainparams_for_network("zcore");
 	b11->timestamp = 1496314658;
 	if (!hex_decode("0001020304050607080900010203040506070809000102030405060708090102",
 			strlen("0001020304050607080900010203040506070809000102030405060708090102"),

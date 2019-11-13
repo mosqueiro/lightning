@@ -1,4 +1,4 @@
-#include <bitcoin/privkey.h>
+#include <zcore/privkey.h>
 #include <ccan/crypto/hkdf_sha256/hkdf_sha256.h>
 #include <ccan/err/err.h>
 #include <ccan/noerr/noerr.h>

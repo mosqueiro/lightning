@@ -8,8 +8,8 @@
    0000000000000000000000000000000000000000000000000000000000000020 0000000000000000000000000000000000000000000000000000000000000000 0000000000000000000000000000000000000000000000000000000000000021 0000000000000000000000000000000000000000000000000000000000000022 0000000000000000000000000000000000000000000000000000000000000023 0000000000000000000000000000000000000000000000000000000000000024 \
    0000000000000000000000000000000000000000000000000000000000000010 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF 0000000000000000000000000000000000000000000000000000000000000011 0000000000000000000000000000000000000000000000000000000000000012 0000000000000000000000000000000000000000000000000000000000000013 0000000000000000000000000000000000000000000000000000000000000014
  */
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/opt/opt.h>
 #include <ccan/err/err.h>
 #include <ccan/str/hex/hex.h>
@@ -160,7 +160,7 @@ static int parse_config(char *argv[],
 	return argnum;
 }
 
-static char *sig_as_hex(const struct bitcoin_signature *sig)
+static char *sig_as_hex(const struct zcore_signature *sig)
 {
 	u8 compact_sig[64];
 
@@ -230,15 +230,15 @@ int main(int argc, char *argv[])
 	struct pubkey funding_localkey, funding_remotekey;
 	u64 commitnum;
 	struct amount_sat funding_amount;
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	unsigned int funding_outnum;
 	u32 feerate_per_kw[NUM_SIDES];
 	struct pubkey local_per_commit_point, remote_per_commit_point;
-	struct bitcoin_signature local_sig, remote_sig;
+	struct zcore_signature local_sig, remote_sig;
 	struct channel_config localconfig, remoteconfig;
 	struct amount_msat local_msat, remote_msat;
 	int argnum;
-	struct bitcoin_tx **local_txs, **remote_txs;
+	struct zcore_tx **local_txs, **remote_txs;
 	enum side fee_payer;
 	u8 **witness;
 	const u8 **wscripts;
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 	struct privkey local_htlc_privkey, remote_htlc_privkey;
 	struct pubkey local_htlc_pubkey, remote_htlc_pubkey;
 	bool option_static_remotekey = false;
-	const struct chainparams *chainparams = chainparams_for_network("bitcoin");
+	const struct chainparams *chainparams = chainparams_for_network("zcore");
 
 	setup_locale();
 
@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
 
 	argnum = 1;
 	commitnum = atol(argv[argnum++]);
-	if (!bitcoin_txid_from_hex(argv[argnum],
+	if (!zcore_txid_from_hex(argv[argnum],
 				   strlen(argv[argnum]), &funding_txid))
 		errx(1, "Bad funding-txid");
 	argnum++;
@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
 				 0))
 		errx(1, "Cannot add HTLCs");
 
-	u8 *funding_wscript = bitcoin_redeem_2of2(NULL,
+	u8 *funding_wscript = zcore_redeem_2of2(NULL,
 						  &funding_localkey,
 						  &funding_remotekey);
 
@@ -408,9 +408,9 @@ int main(int argc, char *argv[])
 	printf("remotesig_on_local: %s\n", sig_as_hex(&remote_sig));
 
 	witness =
-		bitcoin_witness_2of2(NULL, &local_sig, &remote_sig,
+		zcore_witness_2of2(NULL, &local_sig, &remote_sig,
 				     &funding_localkey, &funding_remotekey);
-	bitcoin_tx_input_set_witness(local_txs[0], 0, take(witness));
+	zcore_tx_input_set_witness(local_txs[0], 0, take(witness));
 
 	printf("# signed local commitment: %s\n",
 	       tal_hex(NULL, linearize_tx(NULL, local_txs[0])));
@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 		errx(1, "Failure deriving remote htlc pubkey");
 
 	for (size_t i = 0; i < tal_count(htlcmap); i++) {
-		struct bitcoin_signature local_htlc_sig, remote_htlc_sig;
+		struct zcore_signature local_htlc_sig, remote_htlc_sig;
 		struct amount_sat amt;
 
 		if (!htlcmap[i])
@@ -464,17 +464,17 @@ int main(int argc, char *argv[])
 		       i, sig_as_hex(&remote_htlc_sig));
 
 		if (htlc_owner(htlcmap[i]) == LOCAL)
-			witness = bitcoin_witness_htlc_timeout_tx(NULL,
+			witness = zcore_witness_htlc_timeout_tx(NULL,
 								  &local_htlc_sig,
 								  &remote_htlc_sig,
 								  wscripts[1+i]);
 		else
-			witness = bitcoin_witness_htlc_success_tx(NULL,
+			witness = zcore_witness_htlc_success_tx(NULL,
 								  &local_htlc_sig,
 								  &remote_htlc_sig,
 								  preimage_of(&htlcmap[i]->rhash, htlcs, preimages),
 								  wscripts[1+i]);
-		bitcoin_tx_input_set_witness(local_txs[1+i], 0, witness);
+		zcore_tx_input_set_witness(local_txs[1+i], 0, witness);
 		printf("htlc tx for output %zu: %s\n",
 		       i, tal_hex(NULL, linearize_tx(NULL, local_txs[1+i])));
 	}
@@ -511,9 +511,9 @@ int main(int argc, char *argv[])
 	printf("remotesig_on_remote: %s\n", sig_as_hex(&remote_sig));
 
 	witness =
-		bitcoin_witness_2of2(NULL, &local_sig, &remote_sig,
+		zcore_witness_2of2(NULL, &local_sig, &remote_sig,
 				     &funding_localkey, &funding_remotekey);
-	bitcoin_tx_input_set_witness(remote_txs[0], 0, witness);
+	zcore_tx_input_set_witness(remote_txs[0], 0, witness);
 
 	printf("# signed remote commitment: %s\n",
 	       tal_hex(NULL, linearize_tx(NULL, remote_txs[0])));
@@ -541,7 +541,7 @@ int main(int argc, char *argv[])
 		errx(1, "Failure deriving remote htlc pubkey");
 
 	for (size_t i = 0; i < tal_count(htlcmap); i++) {
-		struct bitcoin_signature local_htlc_sig, remote_htlc_sig;
+		struct zcore_signature local_htlc_sig, remote_htlc_sig;
 		struct amount_sat amt;
 
 		if (!htlcmap[i])
@@ -567,17 +567,17 @@ int main(int argc, char *argv[])
 		       i, sig_as_hex(&remote_htlc_sig));
 
 		if (htlc_owner(htlcmap[i]) == REMOTE)
-			witness = bitcoin_witness_htlc_timeout_tx(NULL,
+			witness = zcore_witness_htlc_timeout_tx(NULL,
 								  &remote_htlc_sig,
 								  &local_htlc_sig,
 								  wscripts[1+i]);
 		else
-			witness = bitcoin_witness_htlc_success_tx(NULL,
+			witness = zcore_witness_htlc_success_tx(NULL,
 								  &remote_htlc_sig,
 								  &local_htlc_sig,
 								  preimage_of(&htlcmap[i]->rhash, htlcs, preimages),
 								  wscripts[1+i]);
-		bitcoin_tx_input_set_witness(remote_txs[1+i], 0, witness);
+		zcore_tx_input_set_witness(remote_txs[1+i], 0, witness);
 		printf("htlc tx for output %zu: %s\n",
 		       i, tal_hex(NULL, linearize_tx(NULL, remote_txs[1+i])));
 	}

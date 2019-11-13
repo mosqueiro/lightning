@@ -1,8 +1,8 @@
-""" A bitcoind proxy that allows instrumentation and canned responses
+""" A zcored proxy that allows instrumentation and canned responses
 """
 from flask import Flask, request
-from bitcoin.rpc import JSONRPCError
-from bitcoin.rpc import RawProxy as BitcoinProxy
+from zcore.rpc import JSONRPCError
+from zcore.rpc import RawProxy as ZCoreProxy
 from cheroot.wsgi import Server
 from cheroot.wsgi import PathInfoDispatcher
 
@@ -22,18 +22,18 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-class BitcoinRpcProxy(object):
-    def __init__(self, bitcoind, rpcport=0):
-        self.app = Flask("BitcoindProxy")
+class ZCoreRpcProxy(object):
+    def __init__(self, zcored, rpcport=0):
+        self.app = Flask("ZCoredProxy")
         self.app.add_url_rule("/", "API entrypoint", self.proxy, methods=['POST'])
         self.rpcport = rpcport
         self.mocks = {}
         self.mock_counts = {}
-        self.bitcoind = bitcoind
+        self.zcored = zcored
         self.request_count = 0
 
     def _handle_request(self, r):
-        brpc = BitcoinProxy(btc_conf_file=self.bitcoind.conf_file)
+        brpc = ZCoreProxy(btc_conf_file=self.zcored.conf_file)
         method = r['method']
 
         # If we have set a mock for this method reply with that instead of
@@ -83,25 +83,25 @@ class BitcoinRpcProxy(object):
         self.proxy_thread.daemon = True
         self.proxy_thread.start()
 
-        # Now that bitcoind is running on the real rpcport, let's tell all
+        # Now that zcored is running on the real rpcport, let's tell all
         # future callers to talk to the proxyport. We use the bind_addr as a
         # signal that the port is bound and accepting connections.
         while self.server.bind_addr[1] == 0:
             pass
         self.rpcport = self.server.bind_addr[1]
-        logging.debug("BitcoinRpcProxy proxying incoming port {} to {}".format(self.rpcport, self.bitcoind.rpcport))
+        logging.debug("ZCoreRpcProxy proxying incoming port {} to {}".format(self.rpcport, self.zcored.rpcport))
 
     def stop(self):
         self.server.stop()
         self.proxy_thread.join()
-        logging.debug("BitcoinRpcProxy shut down after processing {} requests".format(self.request_count))
+        logging.debug("ZCoreRpcProxy shut down after processing {} requests".format(self.request_count))
 
     def mock_rpc(self, method, response=None):
         """Mock the response to a future RPC call of @method
 
         The response can either be a dict with the full JSON-RPC response, or a
         function that returns such a response. If the response is None the mock
-        is removed and future calls will be passed through to bitcoind again.
+        is removed and future calls will be passed through to zcored again.
 
         """
         if response is not None:

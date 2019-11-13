@@ -1,12 +1,12 @@
-#include <bitcoin/preimage.h>
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/preimage.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <common/htlc_tx.h>
 #include <common/keyset.h>
 
-static struct bitcoin_tx *htlc_tx(const tal_t *ctx,
+static struct zcore_tx *htlc_tx(const tal_t *ctx,
 				  const struct chainparams *chainparams,
-				  const struct bitcoin_txid *commit_txid,
+				  const struct zcore_txid *commit_txid,
 				  unsigned int commit_output_number,
 				  struct amount_msat msat,
 				  u16 to_self_delay,
@@ -15,7 +15,7 @@ static struct bitcoin_tx *htlc_tx(const tal_t *ctx,
 				  struct amount_sat htlc_fee,
 				  u32 locktime)
 {
-	struct bitcoin_tx *tx = bitcoin_tx(ctx, chainparams, 1, 1);
+	struct zcore_tx *tx = zcore_tx(ctx, chainparams, 1, 1);
 	u8 *wscript;
 	struct amount_sat amount;
 
@@ -47,7 +47,7 @@ static struct bitcoin_tx *htlc_tx(const tal_t *ctx,
 	 *    * `txin[0]` sequence: `0`
 	 */
 	amount = amount_msat_to_sat_round_down(msat);
-	bitcoin_tx_add_input(tx, commit_txid, commit_output_number, 0, amount,
+	zcore_tx_add_input(tx, commit_txid, commit_output_number, 0, amount,
 			     NULL);
 
 	/* BOLT #3:
@@ -60,9 +60,9 @@ static struct bitcoin_tx *htlc_tx(const tal_t *ctx,
 	if (!amount_sat_sub(&amount, amount, htlc_fee))
 		abort();
 
-	wscript = bitcoin_wscript_htlc_tx(tx, to_self_delay, revocation_pubkey,
+	wscript = zcore_wscript_htlc_tx(tx, to_self_delay, revocation_pubkey,
 					  local_delayedkey);
-	bitcoin_tx_add_output(tx, scriptpubkey_p2wsh(tx, wscript), amount);
+	zcore_tx_add_output(tx, scriptpubkey_p2wsh(tx, wscript), amount);
 	elements_tx_add_fee_output(tx);
 
 	tal_free(wscript);
@@ -70,9 +70,9 @@ static struct bitcoin_tx *htlc_tx(const tal_t *ctx,
 	return tx;
 }
 
-struct bitcoin_tx *htlc_success_tx(const tal_t *ctx,
+struct zcore_tx *htlc_success_tx(const tal_t *ctx,
 				   const struct chainparams *chainparams,
-				   const struct bitcoin_txid *commit_txid,
+				   const struct zcore_txid *commit_txid,
 				   unsigned int commit_output_number,
 				   struct amount_msat htlc_msatoshi,
 				   u16 to_self_delay,
@@ -90,12 +90,12 @@ struct bitcoin_tx *htlc_success_tx(const tal_t *ctx,
 }
 
 /* Fill in the witness for HTLC-success tx produced above. */
-void htlc_success_tx_add_witness(struct bitcoin_tx *htlc_success,
+void htlc_success_tx_add_witness(struct zcore_tx *htlc_success,
 				 const struct abs_locktime *htlc_abstimeout,
 				 const struct pubkey *localhtlckey,
 				 const struct pubkey *remotehtlckey,
-				 const struct bitcoin_signature *localhtlcsig,
-				 const struct bitcoin_signature *remotehtlcsig,
+				 const struct zcore_signature *localhtlcsig,
+				 const struct zcore_signature *remotehtlcsig,
 				 const struct preimage *payment_preimage,
 				 const struct pubkey *revocationkey)
 {
@@ -103,21 +103,21 @@ void htlc_success_tx_add_witness(struct bitcoin_tx *htlc_success,
 	u8 *wscript, **witness;
 
 	sha256(&hash, payment_preimage, sizeof(*payment_preimage));
-	wscript = bitcoin_wscript_htlc_receive(htlc_success,
+	wscript = zcore_wscript_htlc_receive(htlc_success,
 					       htlc_abstimeout,
 					       localhtlckey, remotehtlckey,
 					       &hash, revocationkey);
 
-	witness = bitcoin_witness_htlc_success_tx(htlc_success,
+	witness = zcore_witness_htlc_success_tx(htlc_success,
 						  localhtlcsig, remotehtlcsig,
 						  payment_preimage, wscript);
-	bitcoin_tx_input_set_witness(htlc_success, 0, take(witness));
+	zcore_tx_input_set_witness(htlc_success, 0, take(witness));
 	tal_free(wscript);
 }
 
-struct bitcoin_tx *htlc_timeout_tx(const tal_t *ctx,
+struct zcore_tx *htlc_timeout_tx(const tal_t *ctx,
 				   const struct chainparams *chainparams,
-				   const struct bitcoin_txid *commit_txid,
+				   const struct zcore_txid *commit_txid,
 				   unsigned int commit_output_number,
 				   struct amount_msat htlc_msatoshi,
 				   u32 cltv_expiry,
@@ -136,22 +136,22 @@ struct bitcoin_tx *htlc_timeout_tx(const tal_t *ctx,
 }
 
 /* Fill in the witness for HTLC-timeout tx produced above. */
-void htlc_timeout_tx_add_witness(struct bitcoin_tx *htlc_timeout,
+void htlc_timeout_tx_add_witness(struct zcore_tx *htlc_timeout,
 				 const struct pubkey *localhtlckey,
 				 const struct pubkey *remotehtlckey,
 				 const struct sha256 *payment_hash,
 				 const struct pubkey *revocationkey,
-				 const struct bitcoin_signature *localhtlcsig,
-				 const struct bitcoin_signature *remotehtlcsig)
+				 const struct zcore_signature *localhtlcsig,
+				 const struct zcore_signature *remotehtlcsig)
 {
 	u8 **witness;
-	u8 *wscript = bitcoin_wscript_htlc_offer(htlc_timeout,
+	u8 *wscript = zcore_wscript_htlc_offer(htlc_timeout,
 						 localhtlckey, remotehtlckey,
 						 payment_hash, revocationkey);
 
-	witness = bitcoin_witness_htlc_timeout_tx(htlc_timeout, localhtlcsig,
+	witness = zcore_witness_htlc_timeout_tx(htlc_timeout, localhtlcsig,
 						  remotehtlcsig, wscript);
-	bitcoin_tx_input_set_witness(htlc_timeout, 0, take(witness));
+	zcore_tx_input_set_witness(htlc_timeout, 0, take(witness));
 	tal_free(wscript);
 }
 
@@ -159,7 +159,7 @@ u8 *htlc_offered_wscript(const tal_t *ctx,
 			 const struct ripemd160 *ripemd,
 			 const struct keyset *keyset)
 {
-	return bitcoin_wscript_htlc_offer_ripemd160(ctx,
+	return zcore_wscript_htlc_offer_ripemd160(ctx,
 						    &keyset->self_htlc_key,
 						    &keyset->other_htlc_key,
 						    ripemd,
@@ -171,7 +171,7 @@ u8 *htlc_received_wscript(const tal_t *ctx,
 			  const struct abs_locktime *expiry,
 			  const struct keyset *keyset)
 {
-	return bitcoin_wscript_htlc_receive_ripemd(ctx,
+	return zcore_wscript_htlc_receive_ripemd(ctx,
 						   expiry,
 						   &keyset->self_htlc_key,
 						   &keyset->other_htlc_key,

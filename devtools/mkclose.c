@@ -4,8 +4,8 @@
  *
  * lightning/devtools/mkclose 189c40b0728f382fe91c87270926584e48e0af3a6789f37454afee6c7560311d 0 0.00999877btc 253 0.00999877btc 0000000000000000000000000000000000000000000000000000000000000010 0000000000000000000000000000000000000000000000000000000000000020 026957e53b46df017bd6460681d068e1d23a7b027de398272d0b15f59b78d060a9 03a9f795ff2e4c27091f40e8f8277301824d1c3dfa6b0204aa92347314e41b1033
  */
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/err/err.h>
 #include <ccan/str/hex/hex.h>
 #include <channeld/full_channel.h>
@@ -41,7 +41,7 @@ void status_failed(enum status_failreason reason, const char *fmt, ...)
 	abort();
 }
 
-static char *sig_as_hex(const struct bitcoin_signature *sig)
+static char *sig_as_hex(const struct zcore_signature *sig)
 {
 	u8 compact_sig[64];
 
@@ -56,17 +56,17 @@ int main(int argc, char *argv[])
 	struct pubkey funding_pubkey[NUM_SIDES], outkey[NUM_SIDES];
 	struct privkey funding_privkey[NUM_SIDES];
 	struct amount_sat funding_amount;
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	unsigned int funding_outnum;
 	u32 feerate_per_kw;
 	struct amount_sat fee;
-	struct bitcoin_signature local_sig, remote_sig;
+	struct zcore_signature local_sig, remote_sig;
 	struct amount_msat local_msat, remote_msat;
 	int argnum, num_outputs;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	u8 **witness;
 	const u8 *funding_wscript;
-	const struct chainparams *chainparams = chainparams_for_network("bitcoin");
+	const struct chainparams *chainparams = chainparams_for_network("zcore");
 	const struct amount_sat dust_limit = AMOUNT_SAT(546);
 
 	setup_locale();
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 			"(Fee is deducted from local-msat)");
 
 	argnum = 1;
-	if (!bitcoin_txid_from_hex(argv[argnum],
+	if (!zcore_txid_from_hex(argv[argnum],
 				   strlen(argv[argnum]), &funding_txid))
 		errx(1, "Bad funding-txid");
 	argnum++;
@@ -126,18 +126,18 @@ int main(int argc, char *argv[])
 	    || !pubkey_from_privkey(&funding_privkey[REMOTE], &funding_pubkey[REMOTE]))
 		errx(1, "Bad deriving funding pubkeys");
 
-	tx = bitcoin_tx(NULL, chainparams, 1, 2);
+	tx = zcore_tx(NULL, chainparams, 1, 2);
 
 	/* Our input spends the anchor tx output. */
-	bitcoin_tx_add_input(tx, &funding_txid, funding_outnum,
-			     BITCOIN_TX_DEFAULT_SEQUENCE, funding_amount, NULL);
+	zcore_tx_add_input(tx, &funding_txid, funding_outnum,
+			     ZCORE_TX_DEFAULT_SEQUENCE, funding_amount, NULL);
 
 	num_outputs = 0;
 	if (amount_msat_greater_eq_sat(local_msat, dust_limit)) {
 		u8 *script = scriptpubkey_p2wpkh(NULL, &outkey[LOCAL]);
 		printf("# local witness script: %s\n", tal_hex(NULL, script));
 		/* One output is to us. */
-		bitcoin_tx_add_output(tx, script,
+		zcore_tx_add_output(tx, script,
 				      amount_msat_to_sat_round_down(local_msat));
 		num_outputs++;
 	} else
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 		u8 *script = scriptpubkey_p2wpkh(NULL, &outkey[REMOTE]);
 		printf("# remote witness script: %s\n", tal_hex(NULL, script));
 		/* Other output is to them. */
-		bitcoin_tx_add_output(tx, script,
+		zcore_tx_add_output(tx, script,
 				      amount_msat_to_sat_round_down(remote_msat));
 		num_outputs++;
 	} else
@@ -157,7 +157,7 @@ int main(int argc, char *argv[])
 	if (num_outputs == 0)
 		errx(1, "Can't afford any output!");
 
-	funding_wscript = bitcoin_redeem_2of2(NULL,
+	funding_wscript = zcore_redeem_2of2(NULL,
 					      &funding_pubkey[LOCAL],
 					      &funding_pubkey[REMOTE]);
 	printf("# funding witness script = %s\n",
@@ -177,10 +177,10 @@ int main(int argc, char *argv[])
 	printf("remotesig: %s\n", sig_as_hex(&remote_sig));
 
 	witness =
-		bitcoin_witness_2of2(NULL, &local_sig, &remote_sig,
+		zcore_witness_2of2(NULL, &local_sig, &remote_sig,
 				     &funding_pubkey[LOCAL],
 				     &funding_pubkey[REMOTE]);
-	bitcoin_tx_input_set_witness(tx, 0, witness);
+	zcore_tx_input_set_witness(tx, 0, witness);
 	printf("# signed close transaction: %s\n",
 	       tal_hex(NULL, linearize_tx(NULL, tx)));
 

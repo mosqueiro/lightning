@@ -72,8 +72,8 @@ COMMON_SRC := $(COMMON_SRC_NOGEN) $(COMMON_SRC_GEN)
 
 COMMON_OBJS := $(COMMON_SRC:.c=.o)
 
-# Common objects depends on bitcoin/ external/ and ccan
-$(COMMON_OBJS): $(CCAN_HEADERS) $(BITCOIN_HEADERS) $(EXTERNAL_HEADERS) $(COMMON_HEADERS_GEN)
+# Common objects depends on zcore/ external/ and ccan
+$(COMMON_OBJS): $(CCAN_HEADERS) $(ZCORE_HEADERS) $(EXTERNAL_HEADERS) $(COMMON_HEADERS_GEN)
 
 ALL_GEN_HEADERS += $(COMMON_HEADERS_GEN)
 ALL_OBJS += $(COMMON_OBJS)

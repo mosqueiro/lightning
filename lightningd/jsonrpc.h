@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_LIGHTNINGD_JSONRPC_H
 #define LIGHTNING_LIGHTNINGD_JSONRPC_H
 #include "config.h"
-#include <bitcoin/chainparams.h>
+#include <zcore/chainparams.h>
 #include <ccan/autodata/autodata.h>
 #include <ccan/list/list.h>
 #include <common/json.h>

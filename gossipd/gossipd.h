@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_GOSSIPD_GOSSIPD_H
 #define LIGHTNING_GOSSIPD_GOSSIPD_H
 #include "config.h"
-#include <bitcoin/block.h>
+#include <zcore/block.h>
 #include <ccan/bitmap/bitmap.h>
 #include <ccan/list/list.h>
 #include <ccan/short_types/short_types.h>
@@ -40,7 +40,7 @@ struct daemon {
 	struct routing_state *rstate;
 
 	/* chainhash for checking/making gossip msgs */
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 
 	/* Timers: we batch gossip, and also refresh announcements */
 	struct timers timers;

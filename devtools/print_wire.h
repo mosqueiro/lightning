@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_DEVTOOLS_PRINT_WIRE_H
 #define LIGHTNING_DEVTOOLS_PRINT_WIRE_H
-#include <bitcoin/preimage.h>
-#include <bitcoin/tx.h>
+#include <zcore/preimage.h>
+#include <zcore/tx.h>
 #include <common/wireaddr.h>
 #include <wire/gen_peer_wire.h>
 
@@ -25,8 +25,8 @@ void printwire_u8_array(const char *fieldname, const u8 **cursor, size_t *plen, 
 void printwire_tlvs(const char *tlv_name, const u8 **cursor, size_t *plen,
 		    const struct tlv_print_record_type types[], size_t num_types);
 
-void printwire_bitcoin_blkid(const char *fieldname, const struct bitcoin_blkid *bitcoin_blkid);
-void printwire_bitcoin_txid(const char *fieldname, const struct bitcoin_txid *bitcoin_txid);
+void printwire_zcore_blkid(const char *fieldname, const struct zcore_blkid *zcore_blkid);
+void printwire_zcore_txid(const char *fieldname, const struct zcore_txid *zcore_txid);
 void printwire_channel_id(const char *fieldname, const struct channel_id *channel_id);
 void printwire_amount_sat(const char *fieldname, const struct amount_sat *sat);
 void printwire_amount_msat(const char *fieldname, const struct amount_msat *msat);

@@ -2,7 +2,7 @@
 #ifndef LIGHTNING_COMMON_NODE_ID_H
 #define LIGHTNING_COMMON_NODE_ID_H
 #include "config.h"
-#include <bitcoin/pubkey.h>
+#include <zcore/pubkey.h>
 
 struct node_id {
 	u8 k[PUBKEY_CMPR_LEN];

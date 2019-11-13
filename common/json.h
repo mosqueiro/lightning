@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_COMMON_JSON_H
 #define LIGHTNING_COMMON_JSON_H
 #include "config.h"
-#include <bitcoin/preimage.h>
+#include <zcore/preimage.h>
 #include <ccan/tal/tal.h>
 #include <stdbool.h>
 #include <stdint.h>

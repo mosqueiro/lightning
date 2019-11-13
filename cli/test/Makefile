@@ -1,4 +1,4 @@
-# Note that these actually #include everything they need, except ccan/ and bitcoin/.
+# Note that these actually #include everything they need, except ccan/ and zcore/.
 # That allows for unit testing of statics, and special effects.
 CLI_TEST_SRC := $(wildcard cli/test/run-*.c)
 CLI_TEST_OBJS := $(CLI_TEST_SRC:.c=.o)
@@ -21,7 +21,7 @@ CLI_TEST_COMMON_OBJS :=				\
 
 update-mocks: $(CLI_TEST_SRC:%=update-mocks/%)
 
-$(CLI_TEST_PROGRAMS): $(CCAN_OBJS) $(BITCOIN_OBJS) $(WIRE_OBJS) $(CLI_TEST_COMMON_OBJS)
+$(CLI_TEST_PROGRAMS): $(CCAN_OBJS) $(ZCORE_OBJS) $(WIRE_OBJS) $(CLI_TEST_COMMON_OBJS)
 
 $(CLI_TEST_OBJS): $(LIGHTNING_CLI_HEADERS) $(LIGHTNING_CLI_SRC)
 

@@ -125,7 +125,7 @@ def test_invoice_preimage(node_factory):
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
 @unittest.skipIf(TEST_NETWORK != 'regtest', "Amounts too low, dominated by fees in elements")
-def test_invoice_routeboost(node_factory, bitcoind):
+def test_invoice_routeboost(node_factory, zcored):
     """Test routeboost 'r' hint in bolt11 invoice.
     """
     l0, l1, l2 = node_factory.line_graph(3, fundamount=2 * (10**4), wait_for_announce=True)
@@ -165,7 +165,7 @@ def test_invoice_routeboost(node_factory, bitcoind):
     # Close l0, l2 will not use l1 at all.
     l0.rpc.close(l1.info['id'])
     l0.wait_for_channel_onchain(l1.info['id'])
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
 
     # l2 has to notice channel is gone.
     wait_for(lambda: len(l2.rpc.listchannels()['channels']) == 2)
@@ -176,7 +176,7 @@ def test_invoice_routeboost(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_invoice_routeboost_private(node_factory, bitcoind):
+def test_invoice_routeboost_private(node_factory, zcored):
     """Test routeboost 'r' hint in bolt11 invoice for private channels
     """
     l1, l2 = node_factory.line_graph(2, fundamount=16777215, announce_channels=False)
@@ -185,7 +185,7 @@ def test_invoice_routeboost_private(node_factory, bitcoind):
     l0 = node_factory.get_node()
     l0.rpc.connect(l1.info['id'], 'localhost', l1.port)
     scid = l0.fund_channel(l1, 2 * (10**5))
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make sure channel is totally public.
     wait_for(lambda: [c['public'] for c in l2.rpc.listchannels(scid)['channels']] == [True, True])
@@ -213,7 +213,7 @@ def test_invoice_routeboost_private(node_factory, bitcoind):
     l3 = node_factory.get_node()
     l3.rpc.connect(l2.info['id'], 'localhost', l2.port)
     scid = l3.fund_channel(l2, (10**5))
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make sure channel is totally public.
     wait_for(lambda: [c['public'] for c in l3.rpc.listchannels(scid)['channels']] == [True, True])

@@ -51,7 +51,7 @@ struct command_result *param_utxos(struct command *cmd,
 {
 	size_t i;
 	const jsmntok_t *curr;
-	struct bitcoin_txid **txids = tal_arr(cmd, struct bitcoin_txid*, 0);
+	struct zcore_txid **txids = tal_arr(cmd, struct zcore_txid*, 0);
 	unsigned int **outnums = tal_arr(cmd, unsigned int*, 0);
 
 	json_for_each_arr(i, curr, tok) {
@@ -63,7 +63,7 @@ struct command_result *param_utxos(struct command *cmd,
 								" 'txid:output_index'.",
 								json_strdup(tmpctx, buffer, curr));
 
-		struct bitcoin_txid *txid = tal(txids, struct bitcoin_txid);
+		struct zcore_txid *txid = tal(txids, struct zcore_txid);
 		unsigned int *outnum = tal(txids, unsigned int);
 		if (!json_to_txid(buffer, (const jsmntok_t*)&txid_tok, txid)) {
 			return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
@@ -110,8 +110,8 @@ static struct command_result *check_amount(const struct wallet_tx *wtx,
 		/* Since it's possible the lack of utxos is because we haven't finished
 		 * syncing yet, report a sync timing error first */
 		if (!topology_synced(wtx->cmd->ld->topology))
-			return command_fail(wtx->cmd, FUNDING_STILL_SYNCING_BITCOIN,
-					    "Still syncing with bitcoin network");
+			return command_fail(wtx->cmd, FUNDING_STILL_SYNCING_ZCORE,
+					    "Still syncing with zcore network");
 
 		return command_fail(wtx->cmd, FUND_CANNOT_AFFORD,
 				    "Cannot afford transaction");

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ## Short script to startup two local nodes with
-## bitcoind, all running on regtest
+## zcored, all running on regtest
 ## Makes it easier to test things out, by hand.
 
 ## Should be called by source since it sets aliases
@@ -52,11 +52,11 @@ else
 	echo lightningd is "$LIGHTNINGD"
 fi
 
-if [ -z "$PATH_TO_BITCOIN" ]; then
-	if [ -d "$HOME/.bitcoin" ]; then
-		PATH_TO_BITCOIN="$HOME/.bitcoin"
+if [ -z "$PATH_TO_ZCORE" ]; then
+	if [ -d "$HOME/.zcore" ]; then
+		PATH_TO_ZCORE="$HOME/.zcore"
 	else
-		echo "\$PATH_TO_BITCOIN not set to a .bitcoin dir?" >&2
+		echo "\$PATH_TO_ZCORE not set to a .zcore dir?" >&2
 		return
 	fi
 fi
@@ -82,14 +82,14 @@ EOF
 
 alias l1-cli='$LCLI --lightning-dir=/tmp/l1-regtest'
 alias l2-cli='$LCLI --lightning-dir=/tmp/l2-regtest'
-alias bt-cli='bitcoin-cli -regtest'
+alias bt-cli='zcore-cli -regtest'
 alias l1-log='less /tmp/l1-regtest/log'
 alias l2-log='less /tmp/l2-regtest/log'
 
 start_ln() {
-	# Start bitcoind in the background
-	test -f "$PATH_TO_BITCOIN/regtest/bitcoind.pid" || \
-		bitcoind -daemon -regtest -txindex
+	# Start zcored in the background
+	test -f "$PATH_TO_ZCORE/regtest/zcored.pid" || \
+		zcored -daemon -regtest -txindex
 
 	# Wait for it to start.
 	while ! bt-cli ping 2> /dev/null; do sleep 1; done
@@ -116,9 +116,9 @@ stop_ln() {
 	test ! -f /tmp/l2-regtest/lightningd-regtest.pid || \
 		(kill "$(cat /tmp/l2-regtest/lightningd-regtest.pid)"; \
 		rm /tmp/l2-regtest/lightningd-regtest.pid)
-	test ! -f "$PATH_TO_BITCOIN/regtest/bitcoind.pid" || \
-		(kill "$(cat "$PATH_TO_BITCOIN/regtest/bitcoind.pid")"; \
-		rm "$PATH_TO_BITCOIN/regtest/bitcoind.pid")
+	test ! -f "$PATH_TO_ZCORE/regtest/zcored.pid" || \
+		(kill "$(cat "$PATH_TO_ZCORE/regtest/zcored.pid")"; \
+		rm "$PATH_TO_ZCORE/regtest/zcored.pid")
 }
 
 cleanup_ln() {

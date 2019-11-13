@@ -1,4 +1,4 @@
-#include <bitcoin/tx.h>
+#include <zcore/tx.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/crypto/shachain/shachain.h>
 #include <common/htlc_wire.h>

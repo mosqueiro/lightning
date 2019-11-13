@@ -1,10 +1,10 @@
 #ifndef LIGHTNING_COMMON_UTXO_H
 #define LIGHTNING_COMMON_UTXO_H
 #include "config.h"
-#include <bitcoin/chainparams.h>
-#include <bitcoin/pubkey.h>
-#include <bitcoin/shadouble.h>
-#include <bitcoin/tx.h>
+#include <zcore/chainparams.h>
+#include <zcore/pubkey.h>
+#include <zcore/shadouble.h>
+#include <zcore/tx.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/tal/tal.h>
 #include <common/amount.h>
@@ -22,7 +22,7 @@ struct unilateral_close_info {
 };
 
 struct utxo {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	u32 outnum;
 	struct amount_sat amount;
 	u32 keyindex;
@@ -47,7 +47,7 @@ void towire_utxo(u8 **pptr, const struct utxo *utxo);
 struct utxo *fromwire_utxo(const tal_t *ctx, const u8 **ptr, size_t *max);
 
 /* Create a tx, and populate inputs from utxos */
-struct bitcoin_tx *tx_spending_utxos(const tal_t *ctx,
+struct zcore_tx *tx_spending_utxos(const tal_t *ctx,
 				     const struct chainparams *chainparams,
 				     const struct utxo **utxos,
 				     const struct ext_key *bip32_base,

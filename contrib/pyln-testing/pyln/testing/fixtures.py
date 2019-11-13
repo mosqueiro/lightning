@@ -1,6 +1,6 @@
 from concurrent import futures
 from pyln.testing.db import SqliteDbProvider, PostgresDbProvider
-from pyln.testing.utils import NodeFactory, BitcoinD, ElementsD, env, DEVELOPER, LightningNode
+from pyln.testing.utils import NodeFactory, ZCoreD, ElementsD, env, DEVELOPER, LightningNode
 
 import logging
 import os
@@ -62,7 +62,7 @@ def test_name(request):
 
 
 network_daemons = {
-    'regtest': BitcoinD,
+    'regtest': ZCoreD,
     'liquid-regtest': ElementsD,
 }
 
@@ -73,38 +73,38 @@ def node_cls():
 
 
 @pytest.fixture
-def bitcoind(directory, teardown_checks):
+def zcored(directory, teardown_checks):
     chaind = network_daemons[env('TEST_NETWORK', 'regtest')]
-    bitcoind = chaind(bitcoin_dir=directory)
+    zcored = chaind(zcore_dir=directory)
 
     try:
-        bitcoind.start()
+        zcored.start()
     except Exception:
-        bitcoind.stop()
+        zcored.stop()
         raise
 
-    info = bitcoind.rpc.getnetworkinfo()
+    info = zcored.rpc.getnetworkinfo()
 
     if info['version'] < 160000:
-        bitcoind.rpc.stop()
-        raise ValueError("bitcoind is too old. At least version 16000 (v0.16.0)"
+        zcored.rpc.stop()
+        raise ValueError("zcored is too old. At least version 16000 (v0.16.0)"
                          " is needed, current version is {}".format(info['version']))
 
-    info = bitcoind.rpc.getblockchaininfo()
+    info = zcored.rpc.getblockchaininfo()
     # Make sure we have some spendable funds
     if info['blocks'] < 101:
-        bitcoind.generate_block(101 - info['blocks'])
-    elif bitcoind.rpc.getwalletinfo()['balance'] < 1:
+        zcored.generate_block(101 - info['blocks'])
+    elif zcored.rpc.getwalletinfo()['balance'] < 1:
         logging.debug("Insufficient balance, generating 1 block")
-        bitcoind.generate_block(1)
+        zcored.generate_block(1)
 
-    yield bitcoind
+    yield zcored
 
     try:
-        bitcoind.stop()
+        zcored.stop()
     except Exception:
-        bitcoind.proc.kill()
-    bitcoind.proc.wait()
+        zcored.proc.kill()
+    zcored.proc.wait()
 
 
 class TeardownErrors(object):
@@ -150,10 +150,10 @@ def teardown_checks(request):
 
 
 @pytest.fixture
-def node_factory(request, directory, test_name, bitcoind, executor, db_provider, teardown_checks, node_cls):
+def node_factory(request, directory, test_name, zcored, executor, db_provider, teardown_checks, node_cls):
     nf = NodeFactory(
         test_name,
-        bitcoind,
+        zcored,
         executor,
         directory=directory,
         db_provider=db_provider,

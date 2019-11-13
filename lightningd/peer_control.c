@@ -2,9 +2,9 @@
 #include "peer_control.h"
 #include "subd.h"
 #include <arpa/inet.h>
-#include <bitcoin/feerate.h>
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/feerate.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/cast/cast.h>
 #include <ccan/io/io.h>
@@ -33,7 +33,7 @@
 #include <fcntl.h>
 #include <hsmd/gen_hsm_wire.h>
 #include <inttypes.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/channel_control.h>
 #include <lightningd/closing_control.h>
@@ -193,7 +193,7 @@ u8 *p2wpkh_for_keyidx(const tal_t *ctx, struct lightningd *ld, u64 keyidx)
 static void sign_last_tx(struct channel *channel)
 {
 	struct lightningd *ld = channel->peer->ld;
-	struct bitcoin_signature sig;
+	struct zcore_signature sig;
 	u8 *msg, **witness;
 
 	assert(!channel->last_tx->wtx->inputs[0].witness);
@@ -215,16 +215,16 @@ static void sign_last_tx(struct channel *channel)
 		      tal_hex(tmpctx, msg));
 
 	witness =
-	    bitcoin_witness_2of2(channel->last_tx, &channel->last_sig,
+	    zcore_witness_2of2(channel->last_tx, &channel->last_sig,
 				 &sig, &channel->channel_info.remote_fundingkey,
 				 &channel->local_funding_pubkey);
 
-	bitcoin_tx_input_set_witness(channel->last_tx, 0, take(witness));
+	zcore_tx_input_set_witness(channel->last_tx, 0, take(witness));
 }
 
-static void remove_sig(struct bitcoin_tx *signed_tx)
+static void remove_sig(struct zcore_tx *signed_tx)
 {
-	bitcoin_tx_input_set_witness(signed_tx, 0, NULL);
+	zcore_tx_input_set_witness(signed_tx, 0, NULL);
 }
 
 /* Resolve a single close command. */
@@ -232,9 +232,9 @@ static void
 resolve_one_close_command(struct close_command *cc, bool cooperative)
 {
 	struct json_stream *result = json_stream_success(cc->cmd);
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 
-	bitcoin_txid(cc->channel->last_tx, &txid);
+	zcore_txid(cc->channel->last_tx, &txid);
 
 	json_add_tx(result, "tx", cc->channel->last_tx);
 	json_add_txid(result, "txid", &txid);
@@ -337,12 +337,12 @@ register_close_command(struct lightningd *ld,
 			     &close_command_timeout, cc);
 }
 
-static bool invalid_last_tx(const struct bitcoin_tx *tx)
+static bool invalid_last_tx(const struct zcore_tx *tx)
 {
 	/* This problem goes back further, but was discovered just before the
 	 * 0.7.1 release. */
 #ifdef COMPAT_V070
-	/* Old bug had commitment txs with no outputs; bitcoin_txid asserts. */
+	/* Old bug had commitment txs with no outputs; zcore_txid asserts. */
 	return tx->wtx->num_outputs == 0;
 #else
 	return false;
@@ -352,7 +352,7 @@ static bool invalid_last_tx(const struct bitcoin_tx *tx)
 void drop_to_chain(struct lightningd *ld, struct channel *channel,
 		   bool cooperative)
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	/* BOLT #2:
 	 *
 	 * - if `next_revocation_number` is greater than expected
@@ -370,7 +370,7 @@ void drop_to_chain(struct lightningd *ld, struct channel *channel,
 			   " it's invalid! (ancient channel?)");
 	} else {
 		sign_last_tx(channel);
-		bitcoin_txid(channel->last_tx, &txid);
+		zcore_txid(channel->last_tx, &txid);
 		wallet_transaction_add(ld->wallet, channel->last_tx, 0, 0);
 		wallet_transaction_annotate(ld->wallet, &txid, channel->last_tx_type, channel->dbid);
 
@@ -599,8 +599,8 @@ static void json_add_channel(struct lightningd *ld,
 	json_object_start(response, key);
 	json_add_string(response, "state", channel_state_name(channel));
 	if (channel->last_tx && !invalid_last_tx(channel->last_tx)) {
-		struct bitcoin_txid txid;
-		bitcoin_txid(channel->last_tx, &txid);
+		struct zcore_txid txid;
+		zcore_txid(channel->last_tx, &txid);
 
 		json_add_txid(response, "scratch_txid", &txid);
 	}
@@ -961,12 +961,12 @@ void peer_connected(struct lightningd *ld, const u8 *msg,
 
 /* FIXME: Unify our watch code so we get notified by txout, instead, like
  * the wallet code does. */
-static bool check_funding_tx(const struct bitcoin_tx *tx,
+static bool check_funding_tx(const struct zcore_tx *tx,
 			     const struct channel *channel)
 {
 	u8 *wscript;
 	struct amount_asset asset =
-	    bitcoin_tx_output_get_amount(tx, channel->funding_outnum);
+	    zcore_tx_output_get_amount(tx, channel->funding_outnum);
 
 	if (!amount_asset_is_main(&asset))
 		return false;
@@ -977,18 +977,18 @@ static bool check_funding_tx(const struct bitcoin_tx *tx,
 	if (!amount_sat_eq(amount_asset_to_sat(&asset), channel->funding))
 		return false;
 
-	wscript = bitcoin_redeem_2of2(tmpctx,
+	wscript = zcore_redeem_2of2(tmpctx,
 				      &channel->local_funding_pubkey,
 				      &channel->channel_info.remote_fundingkey);
 	return scripteq(scriptpubkey_p2wsh(tmpctx, wscript),
-			bitcoin_tx_output_get_script(tmpctx, tx,
+			zcore_tx_output_get_script(tmpctx, tx,
 						     channel->funding_outnum));
 }
 
 static enum watch_result funding_depth_cb(struct lightningd *ld,
 					   struct channel *channel,
-					   const struct bitcoin_txid *txid,
-					   const struct bitcoin_tx *tx,
+					   const struct zcore_txid *txid,
+					   const struct zcore_tx *tx,
 					   unsigned int depth)
 {
 	const char *txidstr;
@@ -998,13 +998,13 @@ static enum watch_result funding_depth_cb(struct lightningd *ld,
 	if (tx && !check_funding_tx(tx, channel)) {
 		channel_internal_error(channel, "Bad tx %s: %s",
 				       type_to_string(tmpctx,
-						      struct bitcoin_txid, txid),
+						      struct zcore_txid, txid),
 				       type_to_string(tmpctx,
-						      struct bitcoin_tx, tx));
+						      struct zcore_tx, tx));
 		return DELETE_WATCH;
 	}
 
-	txidstr = type_to_string(tmpctx, struct bitcoin_txid, txid);
+	txidstr = type_to_string(tmpctx, struct zcore_txid, txid);
 	log_debug(channel->log, "Funding tx %s depth %u of %u",
 		  txidstr, depth, channel->minimum_depth);
 	tal_free(txidstr);
@@ -1063,12 +1063,12 @@ static enum watch_result funding_depth_cb(struct lightningd *ld,
 }
 
 static enum watch_result funding_spent(struct channel *channel,
-				       const struct bitcoin_tx *tx,
+				       const struct zcore_tx *tx,
 				       size_t inputnum UNUSED,
 				       const struct block *block)
 {
-	struct bitcoin_txid txid;
-	bitcoin_txid(tx, &txid);
+	struct zcore_txid txid;
+	zcore_txid(tx, &txid);
 
 	wallet_channeltxs_add(channel->peer->ld->wallet, channel,
 			      WIRE_ONCHAIN_INIT, &txid, 0, block->height);
@@ -1298,7 +1298,7 @@ static struct command_result *json_close(struct command *cmd,
 			   p_req("id", param_tok, &idtok),
 			   p_opt_def("unilateraltimeout", param_number,
 				     &timeout, 48 * 3600),
-			   p_opt("destination", param_bitcoin_address,
+			   p_opt("destination", param_zcore_address,
 				 &close_to_script),
 			   NULL))
 			return command_param_failed();
@@ -1396,7 +1396,7 @@ static struct command_result *json_close(struct command *cmd,
 			   p_req("id", param_tok, &idtok),
 			   p_opt_def("unilateraltimeout", param_number,
 				     &timeout, 48 * 3600),
-			   p_opt("destination", param_bitcoin_address,
+			   p_opt("destination", param_zcore_address,
 				 &close_to_script),
 			   p_opt("force", param_bool, &old_force),
 			   p_opt("timeout", param_number, &old_timeout),
@@ -1717,12 +1717,12 @@ static struct command_result *json_getinfo(struct command *cmd,
 				"fees_collected_msat");
     json_add_string(response, "lightning-dir", cmd->ld->config_dir);
 
-    if (!cmd->ld->topology->bitcoind->synced)
-	    json_add_string(response, "warning_bitcoind_sync",
-			    "Bitcoind is not up-to-date with network.");
+    if (!cmd->ld->topology->zcored->synced)
+	    json_add_string(response, "warning_zcored_sync",
+			    "ZCored is not up-to-date with network.");
     else if (!topology_synced(cmd->ld->topology))
 	    json_add_string(response, "warning_lightningd_sync",
-			    "Still loading latest blocks from bitcoind.");
+			    "Still loading latest blocks from zcored.");
 
     return command_success(cmd, response);
 }
@@ -2043,8 +2043,8 @@ struct dev_forget_channel_cmd {
 	struct command *cmd;
 };
 
-static void process_dev_forget_channel(struct bitcoind *bitcoind UNUSED,
-				       const struct bitcoin_tx_output *txout,
+static void process_dev_forget_channel(struct zcored *zcored UNUSED,
+				       const struct zcore_tx_output *txout,
 				       void *arg)
 {
 	struct json_stream *response;
@@ -2139,7 +2139,7 @@ static struct command_result *json_dev_forget_channel(struct command *cmd,
 				    "or `dev-fail` instead.");
 	}
 
-	bitcoind_gettxout(cmd->ld->topology->bitcoind,
+	zcored_gettxout(cmd->ld->topology->zcored,
 			  &forget->channel->funding_txid,
 			  forget->channel->funding_outnum,
 			  process_dev_forget_channel, forget);

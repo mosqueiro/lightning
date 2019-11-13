@@ -1,5 +1,5 @@
 /* Simple wrapper to create zlib or raw encodings of hex. */
-#include <bitcoin/short_channel_id.h>
+#include <zcore/short_channel_id.h>
 #include <ccan/err/err.h>
 #include <ccan/str/hex/hex.h>
 #include <common/decode_array.h>

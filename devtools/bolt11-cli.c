@@ -1,7 +1,7 @@
-#include <bitcoin/address.h>
-#include <bitcoin/base58.h>
-#include <bitcoin/chainparams.h>
-#include <bitcoin/script.h>
+#include <zcore/address.h>
+#include <zcore/base58.h>
+#include <zcore/chainparams.h>
+#include <zcore/script.h>
 #include <ccan/err/err.h>
 #include <ccan/opt/opt.h>
 #include <ccan/read_write_all/read_write_all.h>
@@ -126,14 +126,14 @@ int main(int argc, char *argv[])
 		printf("\n");
 	}
 	for (i = 0; i < tal_count(b11->fallbacks); i++) {
-                struct bitcoin_address pkh;
+                struct zcore_address pkh;
                 struct ripemd160 sh;
                 struct sha256 wsh;
 
 		printf("fallback: %s\n", tal_hex(ctx, b11->fallbacks[i]));
                 if (is_p2pkh(b11->fallbacks[i], &pkh)) {
 			printf("fallback-P2PKH: %s\n",
-			       bitcoin_to_base58(ctx, b11->chain,
+			       zcore_to_base58(ctx, b11->chain,
 						 &pkh));
                 } else if (is_p2sh(b11->fallbacks[i], &sh)) {
 			printf("fallback-P2SH: %s\n",

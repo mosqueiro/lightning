@@ -17,7 +17,7 @@ void peer_start_channeld(struct channel *channel,
 /* Returns true if subd told, otherwise false. */
 bool channel_tell_depth(struct lightningd *ld,
 				 struct channel *channel,
-				 const struct bitcoin_txid *txid,
+				 const struct zcore_txid *txid,
 				 u32 depth);
 /* Notify channels of new blocks. */
 void channel_notify_new_block(struct lightningd *ld,

@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 MAINTAINER Christian Decker <decker.christian@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
-ENV BITCOIN_VERSION 0.17.0
+ENV ZCORE_VERSION 0.17.0
 
 WORKDIR /build
 
@@ -46,10 +46,10 @@ ENV LC_ALL=en_US.UTF-8
 RUN locale-gen en_US.UTF-8 && dpkg-reconfigure locales
 
 RUN cd /tmp/ && \
-    wget https://bitcoin.org/bin/bitcoin-core-$BITCOIN_VERSION/bitcoin-$BITCOIN_VERSION-x86_64-linux-gnu.tar.gz -O bitcoin.tar.gz && \
-    tar -xvzf bitcoin.tar.gz && \
-    mv /tmp/bitcoin-$BITCOIN_VERSION/bin/bitcoin* /usr/local/bin/ && \
-    rm -rf bitcoin.tar.gz /tmp/bitcoin-$BITCOIN_VERSION
+    wget https://zcore.org/bin/zcore-core-$ZCORE_VERSION/zcore-$ZCORE_VERSION-x86_64-linux-gnu.tar.gz -O zcore.tar.gz && \
+    tar -xvzf zcore.tar.gz && \
+    mv /tmp/zcore-$ZCORE_VERSION/bin/zcore* /usr/local/bin/ && \
+    rm -rf zcore.tar.gz /tmp/zcore-$ZCORE_VERSION
 
 RUN pip3 install --upgrade pip && \
     python3 -m pip install \
@@ -63,7 +63,7 @@ RUN pip3 install --upgrade pip && \
 	pytest-timeout==1.3.3 \
 	pytest-xdist==1.22.2 \
 	pytest==3.8.1 \
-	python-bitcoinlib==0.7.0 \
+	python-zcorelib==0.7.0 \
 	tqdm==4.26.0 \
 	pytest-test-groups==1.0.3 \
 	flake8==3.5.0 \

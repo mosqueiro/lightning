@@ -6,7 +6,7 @@
  * crypto/sha256 - implementation of SHA-2 with 256 bit digest.
  *
  * This code is either a wrapper for openssl (if CCAN_CRYPTO_SHA256_USE_OPENSSL
- * is defined) or an open-coded implementation based on Bitcoin's.
+ * is defined) or an open-coded implementation based on ZCore's.
  *
  * License: BSD-MIT
  * Maintainer: Rusty Russell <rusty@rustcorp.com.au>

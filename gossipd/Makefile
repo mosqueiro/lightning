@@ -39,7 +39,7 @@ LIGHTNINGD_HEADERS_GEN += $(LIGHTNINGD_GOSSIP_HEADERS)
 
 # Common source we use.
 GOSSIPD_COMMON_OBJS :=				\
-	bitcoin/chainparams.o			\
+	zcore/chainparams.o			\
 	common/amount.o				\
 	common/base32.o				\
 	common/bech32.o				\
@@ -84,7 +84,7 @@ $(LIGHTNINGD_GOSSIP_CONTROL_OBJS) : $(LIGHTNINGD_GOSSIP_CONTROL_HEADERS)
 
 gossipd-all: lightningd/lightning_gossipd $(LIGHTNINGD_GOSSIP_CLIENT_OBJS)
 
-lightningd/lightning_gossipd: $(LIGHTNINGD_GOSSIP_OBJS) $(GOSSIPD_COMMON_OBJS) $(BITCOIN_OBJS) $(WIRE_OBJS) $(LIGHTNINGD_HSM_CLIENT_OBJS)
+lightningd/lightning_gossipd: $(LIGHTNINGD_GOSSIP_OBJS) $(GOSSIPD_COMMON_OBJS) $(ZCORE_OBJS) $(WIRE_OBJS) $(LIGHTNINGD_HSM_CLIENT_OBJS)
 
 gossipd/gen_gossip_wire.h: $(WIRE_GEN) gossipd/gossip_wire.csv
 	$(WIRE_GEN) --page header $@ gossip_wire_type < gossipd/gossip_wire.csv > $@

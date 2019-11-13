@@ -1,9 +1,9 @@
 #include "wire.h"
 #include <assert.h>
-#include <bitcoin/chainparams.h>
-#include <bitcoin/preimage.h>
-#include <bitcoin/shadouble.h>
-#include <bitcoin/tx.h>
+#include <zcore/chainparams.h>
+#include <zcore/preimage.h>
+#include <zcore/shadouble.h>
+#include <zcore/tx.h>
 #include <ccan/crypto/ripemd160/ripemd160.h>
 #include <ccan/crypto/siphash24/siphash24.h>
 #include <ccan/endian/endian.h>
@@ -177,19 +177,19 @@ void towire_sha256_double(u8 **pptr, const struct sha256_double *sha256d)
 	towire_sha256(pptr, &sha256d->sha);
 }
 
-void towire_bitcoin_txid(u8 **pptr, const struct bitcoin_txid *txid)
+void towire_zcore_txid(u8 **pptr, const struct zcore_txid *txid)
 {
 	towire_sha256_double(pptr, &txid->shad);
 }
 
-void towire_bitcoin_signature(u8 **pptr, const struct bitcoin_signature *sig)
+void towire_zcore_signature(u8 **pptr, const struct zcore_signature *sig)
 {
 	assert(sighash_type_valid(sig->sighash_type));
 	towire_secp256k1_ecdsa_signature(pptr, &sig->s);
 	towire_u8(pptr, sig->sighash_type);
 }
 
-void towire_bitcoin_blkid(u8 **pptr, const struct bitcoin_blkid *blkid)
+void towire_zcore_blkid(u8 **pptr, const struct zcore_blkid *blkid)
 {
 	towire_sha256_double(pptr, &blkid->shad);
 }
@@ -223,7 +223,7 @@ void towire_wirestring(u8 **pptr, const char *str)
 	towire(pptr, str, strlen(str) + 1);
 }
 
-void towire_bitcoin_tx(u8 **pptr, const struct bitcoin_tx *tx)
+void towire_zcore_tx(u8 **pptr, const struct zcore_tx *tx)
 {
 	u8 *lin = linearize_tx(tmpctx, tx);
 	towire_u8_array(pptr, lin, tal_count(lin));
@@ -250,7 +250,7 @@ void towire_bip32_key_version(u8 **pptr, const struct bip32_key_version *version
 	towire_u32(pptr, version->bip32_privkey_version);
 }
 
-void towire_bitcoin_tx_output(u8 **pptr, const struct bitcoin_tx_output *output)
+void towire_zcore_tx_output(u8 **pptr, const struct zcore_tx_output *output)
 {
 	towire_amount_sat(pptr, output->amount);
 	towire_u16(pptr, tal_count(output->script));
@@ -259,5 +259,5 @@ void towire_bitcoin_tx_output(u8 **pptr, const struct bitcoin_tx_output *output)
 
 void towire_chainparams(u8 **cursor, const struct chainparams *chainparams)
 {
-	towire_bitcoin_blkid(cursor, &chainparams->genesis_blockhash);
+	towire_zcore_blkid(cursor, &chainparams->genesis_blockhash);
 }

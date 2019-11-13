@@ -8,8 +8,8 @@ The long wait is over: the c-lightning team is excited to announce the 0.6 relea
 
 While there are far too many new features in the 0.6 release to list, the following are the most interesting and impactful:
 
- - __Lightweight nodes__: Previous releases required a full `bitcoind` node
-   running alongside c-lightning, to provide access to the Bitcoin network. This release still requires the `bitcoin-cli` utility to be present, but it
+ - __Lightweight nodes__: Previous releases required a full `zcored` node
+   running alongside c-lightning, to provide access to the ZCore network. This release still requires the `zcore-cli` utility to be present, but it
    can now talk to remote nodes as well, including some lightweight nodes such
    as [`spruned`][spruned]. This makes it possible to run a c-lightning node on
    Raspberry Pis as well as other low-powered devices.
@@ -87,7 +87,7 @@ IRC][irc].
 In parallel we are also contributing to the advancement of the Lightning specification
 itself and are actively researching what the next iteration of the protocol could
 look like through initiatives like our [eltoo][eltoo] proposal and upstream
-Bitcoin proposals such as [`SIGHASH_NOINPUT`][sighash-noinput].
+ZCore proposals such as [`SIGHASH_NOINPUT`][sighash-noinput].
 
 We'd like to thank the many contributors who have not only contributed code to
 c-lightning, but also those who were #reckless enough to test and give feedback
@@ -103,7 +103,7 @@ environment!
 [irc]: irc://c-lightning@irc.freenode.net
 [ml]: mailto:c-lightning@lists.ozlabs.org
 [gh-issue]: https://github.com/ElementsProject/lightning/issues/new
-[sighash-noinput]: https://github.com/bitcoin/bips/blob/master/bip-0118.mediawiki
+[sighash-noinput]: https://github.com/zcore/bips/blob/master/bip-0118.mediawiki
 [eltoo]: https://blockstream.com/2018/04/30/eltoo-next-lightning.html
 
 

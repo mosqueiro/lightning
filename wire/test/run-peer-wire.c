@@ -108,7 +108,7 @@ struct msg_closing_signed {
 };
 struct msg_funding_created {
 	struct channel_id temporary_channel_id;
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	u16 output_index;
 	secp256k1_ecdsa_signature signature;
 };
@@ -155,7 +155,7 @@ struct msg_channel_update {
 	struct amount_msat htlc_minimum_msat;
 	u32 fee_base_msat;
 	u32 fee_proportional_millionths;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	struct short_channel_id short_channel_id;
 };
 struct msg_channel_update_opt_htlc_max {
@@ -168,7 +168,7 @@ struct msg_channel_update_opt_htlc_max {
 	u32 fee_base_msat;
 	u32 fee_proportional_millionths;
 	struct amount_msat htlc_maximum_msat;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	struct short_channel_id short_channel_id;
 };
 struct msg_funding_locked {
@@ -178,7 +178,7 @@ struct msg_funding_locked {
 struct msg_announcement_signatures {
 	struct channel_id channel_id;
 	secp256k1_ecdsa_signature announcement_node_signature;
-	secp256k1_ecdsa_signature announcement_bitcoin_signature;
+	secp256k1_ecdsa_signature announcement_zcore_signature;
 	struct short_channel_id short_channel_id;
 };
 struct msg_commitment_signed {
@@ -196,7 +196,7 @@ struct msg_node_announcement {
 	u8 *addresses;
 };
 struct msg_open_channel {
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	struct channel_id temporary_channel_id;
 	struct amount_sat funding_satoshis;
 	struct amount_msat push_msat;
@@ -223,15 +223,15 @@ struct msg_update_fail_htlc {
 struct msg_channel_announcement {
 	secp256k1_ecdsa_signature node_signature_1;
 	secp256k1_ecdsa_signature node_signature_2;
-	secp256k1_ecdsa_signature bitcoin_signature_1;
-	secp256k1_ecdsa_signature bitcoin_signature_2;
+	secp256k1_ecdsa_signature zcore_signature_1;
+	secp256k1_ecdsa_signature zcore_signature_2;
 	u8 *features;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	struct short_channel_id short_channel_id;
 	struct node_id node_id_1;
 	struct node_id node_id_2;
-	struct pubkey bitcoin_key_1;
-	struct pubkey bitcoin_key_2;
+	struct pubkey zcore_key_1;
+	struct pubkey zcore_key_2;
 };
 struct msg_init {
 	u8 *globalfeatures;
@@ -256,15 +256,15 @@ static void *towire_struct_channel_announcement(const tal_t *ctx,
 	return towire_channel_announcement(ctx,
 					   &s->node_signature_1,
 					   &s->node_signature_2,
-					   &s->bitcoin_signature_1,
-					   &s->bitcoin_signature_2,
+					   &s->zcore_signature_1,
+					   &s->zcore_signature_2,
 					   s->features,
 					   &s->chain_hash,
 					   &s->short_channel_id,
 					   &s->node_id_1,
 					   &s->node_id_2,
-					   &s->bitcoin_key_1,
-					   &s->bitcoin_key_2);
+					   &s->zcore_key_1,
+					   &s->zcore_key_2);
 }
 
 static struct msg_channel_announcement *fromwire_struct_channel_announcement(const tal_t *ctx, const void *p)
@@ -273,15 +273,15 @@ static struct msg_channel_announcement *fromwire_struct_channel_announcement(con
 	if (!fromwire_channel_announcement(s, p,
 					  &s->node_signature_1,
 					  &s->node_signature_2,
-					  &s->bitcoin_signature_1,
-					  &s->bitcoin_signature_2,
+					  &s->zcore_signature_1,
+					  &s->zcore_signature_2,
 					  &s->features,
 					  &s->chain_hash,
 					  &s->short_channel_id,
 					  &s->node_id_1,
 					  &s->node_id_2,
-					  &s->bitcoin_key_1,
-					  &s->bitcoin_key_2))
+					  &s->zcore_key_1,
+					  &s->zcore_key_2))
 		return tal_free(s);
 	return s;
 }
@@ -506,7 +506,7 @@ static void *towire_struct_announcement_signatures(const tal_t *ctx,
 				     &s->channel_id,
 				     &s->short_channel_id,
 				     &s->announcement_node_signature,
-				     &s->announcement_bitcoin_signature);
+				     &s->announcement_zcore_signature);
 }
 
 static struct msg_announcement_signatures *fromwire_struct_announcement_signatures(const tal_t *ctx, const void *p)
@@ -517,7 +517,7 @@ static struct msg_announcement_signatures *fromwire_struct_announcement_signatur
 				    &s->channel_id,
 				    &s->short_channel_id,
 				    &s->announcement_node_signature,
-				    &s->announcement_bitcoin_signature))
+				    &s->announcement_zcore_signature))
 		return s;
 	return tal_free(s);
 }
@@ -786,7 +786,7 @@ static bool channel_announcement_eq(const struct msg_channel_announcement *a,
 				       &b->short_channel_id)
 		&& eq_field(a, b, node_id_1)
 		&& eq_field(a, b, node_id_2)
-		&& eq_between(a, b, bitcoin_key_1, bitcoin_key_2);
+		&& eq_between(a, b, zcore_key_1, zcore_key_2);
 }
 
 static bool funding_locked_eq(const struct msg_funding_locked *a,
@@ -966,8 +966,8 @@ int main(void)
 	memset(&ca, 2, sizeof(ca));
 	set_node_id(&ca.node_id_1);
 	set_node_id(&ca.node_id_2);
-	set_pubkey(&ca.bitcoin_key_1);
-	set_pubkey(&ca.bitcoin_key_2);
+	set_pubkey(&ca.zcore_key_1);
+	set_pubkey(&ca.zcore_key_2);
  	ca.features = tal_arr(ctx, u8, 2);
  	memset(ca.features, 2, 2);
 

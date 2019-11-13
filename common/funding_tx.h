@@ -1,12 +1,12 @@
 #ifndef LIGHTNING_COMMON_FUNDING_TX_H
 #define LIGHTNING_COMMON_FUNDING_TX_H
 #include "config.h"
-#include <bitcoin/chainparams.h>
+#include <zcore/chainparams.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/tal/tal.h>
 #include <common/amount.h>
 
-struct bitcoin_tx;
+struct zcore_tx;
 struct ext_key;
 struct privkey;
 struct pubkey;
@@ -34,7 +34,7 @@ struct utxo;
  * have to be removed for signing anyway).  The funding transaction is
  * a special case because of the P2SH inputs.
  */
-struct bitcoin_tx *funding_tx(const tal_t *ctx,
+struct zcore_tx *funding_tx(const tal_t *ctx,
 			      const struct chainparams *chainparams,
 			      u16 *outnum,
 			      const struct utxo **utxomap,

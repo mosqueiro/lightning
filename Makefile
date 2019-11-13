@@ -54,7 +54,7 @@ endif
 # (method=thread to support xdist)
 PYTEST_OPTS := -v --timeout=550 --timeout_method=thread -p no:logging
 
-# This is where we add new features as bitcoin adds them.
+# This is where we add new features as zcore adds them.
 FEATURES :=
 
 CCAN_OBJS :=					\
@@ -219,7 +219,7 @@ config.vars:
 	@exit 1
 
 include external/Makefile
-include bitcoin/Makefile
+include zcore/Makefile
 include common/Makefile
 include wire/Makefile
 include hsmd/Makefile
@@ -400,8 +400,8 @@ $(ALL_PROGRAMS) $(ALL_TEST_PROGRAMS):
 # Everything depends on the CCAN headers, and Makefile
 $(CCAN_OBJS) $(CDUMP_OBJS): $(CCAN_HEADERS) Makefile
 
-# Except for CCAN, we treat everything else as dependent on external/ bitcoin/ common/ wire/ and all generated headers, and Makefile
-$(ALL_OBJS): $(BITCOIN_HEADERS) $(COMMON_HEADERS) $(CCAN_HEADERS) $(WIRE_HEADERS) $(ALL_GEN_HEADERS) $(EXTERNAL_HEADERS) Makefile
+# Except for CCAN, we treat everything else as dependent on external/ zcore/ common/ wire/ and all generated headers, and Makefile
+$(ALL_OBJS): $(ZCORE_HEADERS) $(COMMON_HEADERS) $(CCAN_HEADERS) $(WIRE_HEADERS) $(ALL_GEN_HEADERS) $(EXTERNAL_HEADERS) Makefile
 
 # We generate headers in two ways, so regen when either changes (or Makefile)
 $(ALL_GEN_HEADERS): ccan/ccan/cdump/tools/cdump-enumstr $(WIRE_GEN) Makefile

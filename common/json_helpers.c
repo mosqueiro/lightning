@@ -1,12 +1,12 @@
-#include <bitcoin/pubkey.h>
-#include <bitcoin/short_channel_id.h>
+#include <zcore/pubkey.h>
+#include <zcore/short_channel_id.h>
 #include <ccan/ccan/str/hex/hex.h>
 #include <common/amount.h>
 #include <common/json_helpers.h>
 #include <common/node_id.h>
 #include <errno.h>
 
-bool json_to_bitcoin_amount(const char *buffer, const jsmntok_t *tok,
+bool json_to_zcore_amount(const char *buffer, const jsmntok_t *tok,
 			    uint64_t *satoshi)
 {
 	char *end;
@@ -79,9 +79,9 @@ bool json_to_short_channel_id(const char *buffer, const jsmntok_t *tok,
 }
 
 bool json_to_txid(const char *buffer, const jsmntok_t *tok,
-		  struct bitcoin_txid *txid)
+		  struct zcore_txid *txid)
 {
-	return bitcoin_txid_from_hex(buffer + tok->start,
+	return zcore_txid_from_hex(buffer + tok->start,
 				     tok->end - tok->start, txid);
 }
 

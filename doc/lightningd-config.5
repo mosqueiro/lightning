@@ -55,11 +55,11 @@ putting this in someone’s config file may convince them to read this man
 page\.
 
 
-Bitcoin control options:
+ZCore control options:
 
 
  \fBnetwork\fR=\fINETWORK\fR
-Select the network parameters (\fIbitcoin\fR, \fItestnet\fR, or \fIregtest\fR)\.
+Select the network parameters (\fIzcore\fR, \fItestnet\fR, or \fIregtest\fR)\.
 
 
  \fBtestnet\fR
@@ -71,35 +71,35 @@ Alias for \fInetwork=signet\fR\.
 
 
  \fBmainnet\fR
-Alias for \fInetwork=bitcoin\fR\.
+Alias for \fInetwork=zcore\fR\.
 
 
- \fBbitcoin-cli\fR=\fIPATH\fR
-The name of \fIbitcoin-cli\fR executable to run\.
+ \fBzcore-cli\fR=\fIPATH\fR
+The name of \fIzcore-cli\fR executable to run\.
 
 
- \fBbitcoin-datadir\fR=\fIDIR\fR
-\fI-datadir\fR argument to supply to \fBbitcoin-cli\fR(1)\.
+ \fBzcore-datadir\fR=\fIDIR\fR
+\fI-datadir\fR argument to supply to \fBzcore-cli\fR(1)\.
 
 
- \fBbitcoin-rpcuser\fR=\fIUSER\fR
-The RPC username for talking to \fBbitcoind\fR(1)\.
+ \fBzcore-rpcuser\fR=\fIUSER\fR
+The RPC username for talking to \fBzcored\fR(1)\.
 
 
- \fBbitcoin-rpcpassword\fR=\fIPASSWORD\fR
-The RPC password for talking to \fBbitcoind\fR(1)\.
+ \fBzcore-rpcpassword\fR=\fIPASSWORD\fR
+The RPC password for talking to \fBzcored\fR(1)\.
 
 
- \fBbitcoin-rpcconnect\fR=\fIHOST\fR
-The \fBbitcoind\fR(1) RPC host to connect to\.
+ \fBzcore-rpcconnect\fR=\fIHOST\fR
+The \fBzcored\fR(1) RPC host to connect to\.
 
 
- \fBbitcoin-rpcport\fR=\fIPORT\fR
-The \fBbitcoind\fR(1) RPC port to connect to\.
+ \fBzcore-rpcport\fR=\fIPORT\fR
+The \fBzcored\fR(1) RPC port to connect to\.
 
 
- \fBbitcoin-retry-timeout\fR=\fISECONDS\fR
-Number of seconds to keep trying a \fBbitcoin-cli\fR(1) command\. If the
+ \fBzcore-retry-timeout\fR=\fISECONDS\fR
+Number of seconds to keep trying a \fBzcore-cli\fR(1) command\. If the
 command keeps failing after this time, exit with a fatal error\.
 
 
@@ -229,7 +229,7 @@ opens a channel before the channel is usable\.
 
 
  \fBcommit-fee\fR=\fIPERCENT\fR
-The percentage of \fIestimatesmartfee 2\fR to use for the bitcoin
+The percentage of \fIestimatesmartfee 2\fR to use for the zcore
 transaction which funds a channel: can be greater than 100\.
 
 

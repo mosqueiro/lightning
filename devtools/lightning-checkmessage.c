@@ -1,5 +1,5 @@
-#include <bitcoin/pubkey.h>
-#include <bitcoin/shadouble.h>
+#include <zcore/pubkey.h>
+#include <zcore/shadouble.h>
 #include <ccan/crypto/sha256/sha256.h>
 #include <ccan/err/err.h>
 #include <ccan/short_types/short_types.h>

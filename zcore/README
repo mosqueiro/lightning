@@ -1,0 +1,6 @@
+These are standard zcore manipulation routines which should be
+provided by any normal zcore library in whatever language you choose.
+
+The ones here are standalone ones taken from zcore core and some I
+wrote, many taken from zcore-iterate and pasted in here.
+

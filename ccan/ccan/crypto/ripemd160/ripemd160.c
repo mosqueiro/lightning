@@ -1,8 +1,8 @@
 /* MIT (BSD) license - see LICENSE file for details */
-/* RIPEMD core code translated from the Bitcoin project's C++:
+/* RIPEMD core code translated from the ZCore project's C++:
  *
  * src/crypto/ripemd160.cpp commit f914f1a746d7f91951c1da262a4a749dd3ebfa71
- * Copyright (c) 2014 The Bitcoin Core developers
+ * Copyright (c) 2014 The ZCore Core developers
  * Distributed under the MIT software license, see the accompanying
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.
  */

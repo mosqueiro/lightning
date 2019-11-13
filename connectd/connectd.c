@@ -1260,7 +1260,7 @@ static const char **seednames(const tal_t *ctx, const struct node_id *id)
 	bech32_push_bits(&data, id->k, ARRAY_SIZE(id->k)*8);
 	bech32_encode(bech32, "ln", data, tal_count(data), sizeof(bech32));
 	/* This is cdecker's seed */
-	tal_arr_expand(&seednames, tal_fmt(seednames, "%s.lseed.bitcoinstats.com", bech32));
+	tal_arr_expand(&seednames, tal_fmt(seednames, "%s.lseed.zcorestats.com", bech32));
 	return seednames;
 }
 
@@ -1268,7 +1268,7 @@ static const char **seednames(const tal_t *ctx, const struct node_id *id)
  * resolve a node name when they say to connect to it.  This is synchronous,
  * so connectd blocks, but it's not very common so we haven't fixed it.
  *
- * This "seed by DNS" approach is similar to what bitcoind uses, and in fact
+ * This "seed by DNS" approach is similar to what zcored uses, and in fact
  * has the nice property that DNS is cached, and the seed only sees a request
  * from the ISP, not directly from the user. */
 static void add_seed_addrs(struct wireaddr_internal **addrs,

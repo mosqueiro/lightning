@@ -53,10 +53,10 @@ Print version and exit. Also useless inside a configuration file, but
 putting this in someone’s config file may convince them to read this man
 page.
 
-Bitcoin control options:
+ZCore control options:
 
  **network**=*NETWORK*
-Select the network parameters (*bitcoin*, *testnet*, or *regtest*).
+Select the network parameters (*zcore*, *testnet*, or *regtest*).
 
  **testnet**
 Alias for *network=testnet*.
@@ -65,28 +65,28 @@ Alias for *network=testnet*.
 Alias for *network=signet*.
 
  **mainnet**
-Alias for *network=bitcoin*.
+Alias for *network=zcore*.
 
- **bitcoin-cli**=*PATH*
-The name of *bitcoin-cli* executable to run.
+ **zcore-cli**=*PATH*
+The name of *zcore-cli* executable to run.
 
- **bitcoin-datadir**=*DIR*
-*-datadir* argument to supply to bitcoin-cli(1).
+ **zcore-datadir**=*DIR*
+*-datadir* argument to supply to zcore-cli(1).
 
- **bitcoin-rpcuser**=*USER*
-The RPC username for talking to bitcoind(1).
+ **zcore-rpcuser**=*USER*
+The RPC username for talking to zcored(1).
 
- **bitcoin-rpcpassword**=*PASSWORD*
-The RPC password for talking to bitcoind(1).
+ **zcore-rpcpassword**=*PASSWORD*
+The RPC password for talking to zcored(1).
 
- **bitcoin-rpcconnect**=*HOST*
-The bitcoind(1) RPC host to connect to.
+ **zcore-rpcconnect**=*HOST*
+The zcored(1) RPC host to connect to.
 
- **bitcoin-rpcport**=*PORT*
-The bitcoind(1) RPC port to connect to.
+ **zcore-rpcport**=*PORT*
+The zcored(1) RPC port to connect to.
 
- **bitcoin-retry-timeout**=*SECONDS*
-Number of seconds to keep trying a bitcoin-cli(1) command. If the
+ **zcore-retry-timeout**=*SECONDS*
+Number of seconds to keep trying a zcore-cli(1) command. If the
 command keeps failing after this time, exit with a fatal error.
 
  **rescan**=*BLOCKS*
@@ -197,7 +197,7 @@ Confirmations required for the funding transaction when the other side
 opens a channel before the channel is usable.
 
  **commit-fee**=*PERCENT*
-The percentage of *estimatesmartfee 2* to use for the bitcoin
+The percentage of *estimatesmartfee 2* to use for the zcore
 transaction which funds a channel: can be greater than 100.
 
  **commit-fee-min**=*PERCENT*

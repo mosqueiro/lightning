@@ -378,7 +378,7 @@ def test_invoice_payment_hook_hold(node_factory):
     l1.rpc.pay(inv1['bolt11'])
 
 
-def test_openchannel_hook(node_factory, bitcoind):
+def test_openchannel_hook(node_factory, zcored):
     """ l2 uses the reject_odd_funding_amounts plugin to reject some openings.
     """
     opts = [{}, {'plugin': os.path.join(os.getcwd(), 'tests/plugins/reject_odd_funding_amounts.py')}]
@@ -386,9 +386,9 @@ def test_openchannel_hook(node_factory, bitcoind):
 
     # Get some funds.
     addr = l1.rpc.newaddr()['bech32']
-    txid = bitcoind.rpc.sendtoaddress(addr, 10)
+    txid = zcored.rpc.sendtoaddress(addr, 10)
     numfunds = len(l1.rpc.listfunds()['outputs'])
-    bitcoind.generate_block(1, txid)
+    zcored.generate_block(1, txid)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) > numfunds)
 
     # Even amount: works.
@@ -410,7 +410,7 @@ def test_openchannel_hook(node_factory, bitcoind):
 
     # Close it.
     txid = l1.rpc.close(l2.info['id'])['txid']
-    bitcoind.generate_block(1, txid)
+    zcored.generate_block(1, txid)
     wait_for(lambda: [c['state'] for c in only_one(l1.rpc.listpeers(l2.info['id'])['peers'])['channels']] == ['ONCHAIN'])
 
     # Odd amount: fails
@@ -608,7 +608,7 @@ def test_channel_opened_notification(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_forward_event_notification(node_factory, bitcoind, executor):
+def test_forward_event_notification(node_factory, zcored, executor):
     """ test 'forward_event' notifications
     """
     amount = 10**8
@@ -624,7 +624,7 @@ def test_forward_event_notification(node_factory, bitcoind, executor):
     l2.openchannel(l4, 10**6, wait_for_announce=False)
     l2.openchannel(l5, 10**6, wait_for_announce=True)
 
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     wait_for(lambda: len(l1.rpc.listchannels()['channels']) == 8)
 
@@ -660,22 +660,22 @@ def test_forward_event_notification(node_factory, bitcoind, executor):
 
     l5.daemon.wait_for_log('permfail')
     l5.wait_for_channel_onchain(l2.info['id'])
-    l2.bitcoin.generate_block(1)
+    l2.zcore.generate_block(1)
     l2.daemon.wait_for_log(' to ONCHAIN')
     l5.daemon.wait_for_log(' to ONCHAIN')
 
     l2.daemon.wait_for_log('Propose handling THEIR_UNILATERAL/OUR_HTLC by OUR_HTLC_TIMEOUT_TO_US .* after 6 blocks')
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
 
     l2.wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                    'THEIR_UNILATERAL/OUR_HTLC')
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l2.daemon.wait_for_log('Resolved THEIR_UNILATERAL/OUR_HTLC by our proposal OUR_HTLC_TIMEOUT_TO_US')
     l5.daemon.wait_for_log('Ignoring output.*: OUR_UNILATERAL/THEIR_HTLC')
 
-    bitcoind.generate_block(100)
-    sync_blockheight(bitcoind, [l2])
+    zcored.generate_block(100)
+    sync_blockheight(zcored, [l2])
 
     stats = l2.rpc.listforwards()['forwards']
     assert len(stats) == 3
@@ -726,7 +726,7 @@ def test_plugin_deprecated_relpath(node_factory):
                                                     'tests/plugins/millisatoshis.py')))
 
 
-def test_sendpay_notifications(node_factory, bitcoind):
+def test_sendpay_notifications(node_factory, zcored):
     """ test 'sendpay_success' and 'sendpay_failure' notifications
     """
     amount = 10**8

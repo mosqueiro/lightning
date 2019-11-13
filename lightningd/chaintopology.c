@@ -1,8 +1,8 @@
-#include "bitcoin/block.h"
-#include "bitcoin/feerate.h"
-#include "bitcoin/script.h"
-#include "bitcoin/tx.h"
-#include "bitcoind.h"
+#include "zcore/block.h"
+#include "zcore/feerate.h"
+#include "zcore/script.h"
+#include "zcore/tx.h"
+#include "zcored.h"
 #include "chaintopology.h"
 #include "channel.h"
 #include "jsonrpc.h"
@@ -48,12 +48,12 @@ static void next_topology_timer(struct chain_topology *topo)
 }
 
 static bool we_broadcast(const struct chain_topology *topo,
-			 const struct bitcoin_txid *txid)
+			 const struct zcore_txid *txid)
 {
 	const struct outgoing_tx *otx;
 
 	list_for_each(&topo->outgoing_txs, otx, list) {
-		if (bitcoin_txid_eq(&otx->txid, txid))
+		if (zcore_txid_eq(&otx->txid, txid))
 			return true;
 	}
 	return false;
@@ -66,15 +66,15 @@ static void filter_block_txs(struct chain_topology *topo, struct block *b)
 
 	/* Now we see if any of those txs are interesting. */
 	for (i = 0; i < tal_count(b->full_txs); i++) {
-		const struct bitcoin_tx *tx = b->full_txs[i];
-		struct bitcoin_txid txid;
+		const struct zcore_tx *tx = b->full_txs[i];
+		struct zcore_txid txid;
 		size_t j;
 
 		/* Tell them if it spends a txo we care about. */
 		for (j = 0; j < tx->wtx->num_inputs; j++) {
 			struct txwatch_output out;
 			struct txowatch *txo;
-			bitcoin_tx_input_get_txid(tx, j, &out.txid);
+			zcore_tx_input_get_txid(tx, j, &out.txid);
 			out.index = tx->wtx->inputs[j].index;
 
 			txo = txowatch_hash_get(&topo->txowatches, &out);
@@ -86,9 +86,9 @@ static void filter_block_txs(struct chain_topology *topo, struct block *b)
 		}
 
 		owned = AMOUNT_SAT(0);
-		bitcoin_txid(tx, &txid);
-		if (txfilter_match(topo->bitcoind->ld->owned_txfilter, tx)) {
-			wallet_extract_owned_outputs(topo->bitcoind->ld->wallet,
+		zcore_txid(tx, &txid);
+		if (txfilter_match(topo->zcored->ld->owned_txfilter, tx)) {
+			wallet_extract_owned_outputs(topo->zcored->ld->wallet,
 						     tx, &b->height, &owned);
 			wallet_transaction_add(topo->ld->wallet, tx, b->height,
 					       i);
@@ -106,7 +106,7 @@ static void filter_block_txs(struct chain_topology *topo, struct block *b)
 }
 
 size_t get_tx_depth(const struct chain_topology *topo,
-		    const struct bitcoin_txid *txid)
+		    const struct zcore_txid *txid)
 {
 	u32 blockheight = wallet_transaction_height(topo->ld->wallet, txid);
 
@@ -118,7 +118,7 @@ size_t get_tx_depth(const struct chain_topology *topo,
 struct txs_to_broadcast {
 	/* We just sent txs[cursor] */
 	size_t cursor;
-	/* These are hex encoded already, for bitcoind_sendrawtx */
+	/* These are hex encoded already, for zcored_sendrawtx */
 	const char **txs;
 
 	/* Command to complete when we're done, if and only if dev-broadcast triggered */
@@ -126,7 +126,7 @@ struct txs_to_broadcast {
 };
 
 /* We just sent the last entry in txs[].  Shrink and send the next last. */
-static void broadcast_remainder(struct bitcoind *bitcoind,
+static void broadcast_remainder(struct zcored *zcored,
 				int exitstatus, const char *msg,
 				struct txs_to_broadcast *txs)
 {
@@ -134,7 +134,7 @@ static void broadcast_remainder(struct bitcoind *bitcoind,
 	if (strstr(msg, "txn-mempool-conflict")
 	    || strstr(msg, "transaction already in block chain")
 	    || exitstatus)
-		log_debug(bitcoind->log,
+		log_debug(zcored->log,
 			  "Expected error broadcasting tx %s: %s",
 			  txs->txs[txs->cursor], msg);
 
@@ -148,11 +148,11 @@ static void broadcast_remainder(struct bitcoind *bitcoind,
 	}
 
 	/* Broadcast next one. */
-	bitcoind_sendrawtx(bitcoind, txs->txs[txs->cursor],
+	zcored_sendrawtx(zcored, txs->txs[txs->cursor],
 			   broadcast_remainder, txs);
 }
 
-/* FIXME: This is dumb.  We can group txs and avoid bothering bitcoind
+/* FIXME: This is dumb.  We can group txs and avoid bothering zcored
  * if any one tx is in the main chain. */
 static void rebroadcast_txs(struct chain_topology *topo, struct command *cmd)
 {
@@ -174,7 +174,7 @@ static void rebroadcast_txs(struct chain_topology *topo, struct command *cmd)
 
 	/* Let this do the dirty work. */
 	txs->cursor = (size_t)-1;
-	broadcast_remainder(topo->bitcoind, 0, "", txs);
+	broadcast_remainder(topo->zcored, 0, "", txs);
 }
 
 static void destroy_outgoing_tx(struct outgoing_tx *otx)
@@ -189,7 +189,7 @@ static void clear_otx_channel(struct channel *channel, struct outgoing_tx *otx)
 	otx->channel = NULL;
 }
 
-static void broadcast_done(struct bitcoind *bitcoind,
+static void broadcast_done(struct zcored *zcored,
 			   int exitstatus, const char *msg,
 			   struct outgoing_tx *otx)
 {
@@ -208,13 +208,13 @@ static void broadcast_done(struct bitcoind *bitcoind,
 	} else {
 		/* For continual rebroadcasting, until channel freed. */
 		tal_steal(otx->channel, otx);
-		list_add_tail(&bitcoind->ld->topology->outgoing_txs, &otx->list);
+		list_add_tail(&zcored->ld->topology->outgoing_txs, &otx->list);
 		tal_add_destructor(otx, destroy_outgoing_tx);
 	}
 }
 
 void broadcast_tx(struct chain_topology *topo,
-		  struct channel *channel, const struct bitcoin_tx *tx,
+		  struct channel *channel, const struct zcore_tx *tx,
 		  void (*failed_or_success)(struct channel *channel,
 				 int exitstatus, const char *err))
 {
@@ -223,37 +223,37 @@ void broadcast_tx(struct chain_topology *topo,
 	const u8 *rawtx = linearize_tx(otx, tx);
 
 	otx->channel = channel;
-	bitcoin_txid(tx, &otx->txid);
+	zcore_txid(tx, &otx->txid);
 	otx->hextx = tal_hex(otx, rawtx);
 	otx->failed_or_success = failed_or_success;
 	tal_free(rawtx);
 	tal_add_destructor2(channel, clear_otx_channel, otx);
 
 	log_add(topo->log, " (tx %s)",
-		type_to_string(tmpctx, struct bitcoin_txid, &otx->txid));
+		type_to_string(tmpctx, struct zcore_txid, &otx->txid));
 
 	wallet_transaction_add(topo->ld->wallet, tx, 0, 0);
-	bitcoind_sendrawtx(topo->bitcoind, otx->hextx, broadcast_done, otx);
+	zcored_sendrawtx(topo->zcored, otx->hextx, broadcast_done, otx);
 }
 
 static enum watch_result closeinfo_txid_confirmed(struct lightningd *ld,
 						  struct channel *channel,
-						  const struct bitcoin_txid *txid,
-						  const struct bitcoin_tx *tx,
+						  const struct zcore_txid *txid,
+						  const struct zcore_tx *tx,
 						  unsigned int depth)
 {
 	/* Sanity check. */
 	if (tx != NULL) {
-		struct bitcoin_txid txid2;
+		struct zcore_txid txid2;
 
-		bitcoin_txid(tx, &txid2);
-		if (!bitcoin_txid_eq(txid, &txid2)) {
+		zcore_txid(tx, &txid2);
+		if (!zcore_txid_eq(txid, &txid2)) {
 			channel_internal_error(channel, "Txid for %s is not %s",
 					       type_to_string(tmpctx,
-							      struct bitcoin_tx,
+							      struct zcore_tx,
 							      tx),
 					       type_to_string(tmpctx,
-							      struct bitcoin_txid,
+							      struct zcore_txid,
 							      txid));
 			return DELETE_WATCH;
 		}
@@ -338,7 +338,7 @@ static void add_feerate_history(struct chain_topology *topo,
 }
 
 /* We sanitize feerates if necessary to put them in descending order. */
-static void update_feerates(struct bitcoind *bitcoind,
+static void update_feerates(struct zcored *zcored,
 			    const u32 *satoshi_per_kw,
 			    struct chain_topology *topo)
 {
@@ -425,7 +425,7 @@ static void update_feerates(struct bitcoind *bitcoind,
 	}
 
 	if (changed)
-		notify_feerate_change(bitcoind->ld);
+		notify_feerate_change(zcored->ld);
 
 	next_updatefee_timer(topo);
 }
@@ -439,7 +439,7 @@ static void start_fee_estimate(struct chain_topology *topo)
 	BUILD_ASSERT(ARRAY_SIZE(blocks) == NUM_FEERATES);
 
 	/* Once per new block head, update fee estimates. */
-	bitcoind_estimate_fees(topo->bitcoind, blocks, estmodes, NUM_FEERATES,
+	zcored_estimate_fees(topo->zcored, blocks, estmodes, NUM_FEERATES,
 			       update_feerates, topo);
 }
 
@@ -523,7 +523,7 @@ static struct command_result *json_feerates(struct command *cmd,
 
 	if (missing)
 		json_add_string(response, "warning",
-				"Some fee estimates unavailable: bitcoind startup?");
+				"Some fee estimates unavailable: zcored startup?");
 	else {
 		json_object_start(response, "onchain_fee_estimates");
 		/* eg 020000000001016f51de645a47baa49a636b8ec974c28bdff0ac9151c0f4eda2dbe3b41dbe711d000000001716001401fad90abcd66697e2592164722de4a95ebee165ffffffff0240420f00000000002200205b8cd3b914cf67cdd8fa6273c930353dd36476734fbd962102c2df53b90880cdb73f890000000000160014c2ccab171c2a5be9dab52ec41b825863024c54660248304502210088f65e054dbc2d8f679de3e40150069854863efa4a45103b2bb63d060322f94702200d3ae8923924a458cffb0b7360179790830027bb6b29715ba03e12fc22365de1012103d745445c9362665f22e0d96e9e766f273f3260dea39c8a76bfa05dd2684ddccf00000000 == weight 702 */
@@ -543,7 +543,7 @@ static struct command_result *json_feerates(struct command *cmd,
 
 static const struct json_command feerates_command = {
 	"feerates",
-	"bitcoin",
+	"zcore",
 	json_feerates,
 	"Return feerate estimates, either satoshi-per-kw ({style} perkw) or satoshi-per-kb ({style} perkb)."
 };
@@ -587,7 +587,7 @@ static void updates_complete(struct chain_topology *topo)
 {
 	if (topo->tip != topo->prev_tip) {
 		/* Tell lightningd about new block. */
-		notify_new_block(topo->bitcoind->ld, topo->tip->height);
+		notify_new_block(topo->zcored->ld, topo->tip->height);
 
 		/* Tell watch code to re-evaluate all txs. */
 		watch_topology_changed(topo);
@@ -596,14 +596,14 @@ static void updates_complete(struct chain_topology *topo)
 		rebroadcast_txs(topo, NULL);
 
 		/* We've processed these UTXOs */
-		db_set_intvar(topo->bitcoind->ld->wallet->db,
+		db_set_intvar(topo->zcored->ld->wallet->db,
 			      "last_processed_block", topo->tip->height);
 
 		topo->prev_tip = topo->tip;
 	}
 
-	/* If bitcoind is synced, we're now synced. */
-	if (topo->bitcoind->synced && !topology_synced(topo)) {
+	/* If zcored is synced, we're now synced. */
+	if (topo->zcored->synced && !topology_synced(topo)) {
 		struct sync_waiter *w;
 		struct list_head *list = topo->sync_waiters;
 
@@ -630,17 +630,17 @@ static void topo_update_spends(struct chain_topology *topo, struct block *b)
 {
 	const struct short_channel_id *scid;
 	for (size_t i = 0; i < tal_count(b->full_txs); i++) {
-		const struct bitcoin_tx *tx = b->full_txs[i];
+		const struct zcore_tx *tx = b->full_txs[i];
 		for (size_t j = 0; j < tx->wtx->num_inputs; j++) {
 			const struct wally_tx_input *input = &tx->wtx->inputs[j];
-			struct bitcoin_txid txid;
-			bitcoin_tx_input_get_txid(tx, j, &txid);
+			struct zcore_txid txid;
+			zcore_tx_input_get_txid(tx, j, &txid);
 
 			scid = wallet_outpoint_spend(topo->ld->wallet, tmpctx,
 						     b->height, &txid,
 						     input->index);
 			if (scid) {
-				gossipd_notify_spend(topo->bitcoind->ld, scid);
+				gossipd_notify_spend(topo->zcored->ld, scid);
 				tal_free(scid);
 			}
 		}
@@ -650,13 +650,13 @@ static void topo_update_spends(struct chain_topology *topo, struct block *b)
 static void topo_add_utxos(struct chain_topology *topo, struct block *b)
 {
 	for (size_t i = 0; i < tal_count(b->full_txs); i++) {
-		const struct bitcoin_tx *tx = b->full_txs[i];
+		const struct zcore_tx *tx = b->full_txs[i];
 		for (size_t j = 0; j < tx->wtx->num_outputs; j++) {
 			if (tx->wtx->outputs[j].features & WALLY_TX_IS_COINBASE)
 				continue;
 
-			const u8 *script = bitcoin_tx_output_get_script(tmpctx, tx, j);
-			struct amount_asset amt = bitcoin_tx_output_get_amount(tx, j);
+			const u8 *script = zcore_tx_output_get_script(tmpctx, tx, j);
+			struct amount_asset amt = zcore_tx_output_get_amount(tx, j);
 
 			if (amount_asset_is_main(&amt) && is_p2wsh(script, NULL)) {
 				wallet_utxoset_add(topo->ld->wallet, tx, j,
@@ -687,15 +687,15 @@ static void add_tip(struct chain_topology *topo, struct block *b)
 }
 
 static struct block *new_block(struct chain_topology *topo,
-			       struct bitcoin_block *blk,
+			       struct zcore_block *blk,
 			       unsigned int height)
 {
 	struct block *b = tal(topo, struct block);
 
-	bitcoin_block_blkid(blk, &b->blkid);
+	zcore_block_blkid(blk, &b->blkid);
 	log_debug(topo->log, "Adding block %u: %s",
 		  height,
-		  type_to_string(tmpctx, struct bitcoin_blkid, &b->blkid));
+		  type_to_string(tmpctx, struct zcore_blkid, &b->blkid));
 	assert(!block_map_get(&topo->block_map, &b->blkid));
 	b->next = NULL;
 	b->prev = NULL;
@@ -713,12 +713,12 @@ static struct block *new_block(struct chain_topology *topo,
 static void remove_tip(struct chain_topology *topo)
 {
 	struct block *b = topo->tip;
-	struct bitcoin_txid *txs;
+	struct zcore_txid *txs;
 	size_t i, n;
 
 	log_debug(topo->log, "Removing stale block %u: %s",
 			  topo->tip->height,
-			  type_to_string(tmpctx, struct bitcoin_blkid, &b->blkid));
+			  type_to_string(tmpctx, struct zcore_blkid, &b->blkid));
 
 	/* Move tip back one. */
 	topo->tip = b->prev;
@@ -726,7 +726,7 @@ static void remove_tip(struct chain_topology *topo)
 	if (!topo->tip)
 		fatal("Initial block %u (%s) reorganized out!",
 		      b->height,
-		      type_to_string(tmpctx, struct bitcoin_blkid, &b->blkid));
+		      type_to_string(tmpctx, struct zcore_blkid, &b->blkid));
 
 	txs = wallet_transactions_by_height(b, topo->ld->wallet, b->height);
 	n = tal_count(txs);
@@ -742,8 +742,8 @@ static void remove_tip(struct chain_topology *topo)
 	tal_free(b);
 }
 
-static void have_new_block(struct bitcoind *bitcoind UNUSED,
-			   struct bitcoin_block *blk,
+static void have_new_block(struct zcored *zcored UNUSED,
+			   struct zcore_block *blk,
 			   struct chain_topology *topo)
 {
 	const struct chainparams *chainparams = get_chainparams(topo->ld);
@@ -753,7 +753,7 @@ static void have_new_block(struct bitcoind *bitcoind UNUSED,
 
 
 	/* Unexpected predecessor?  Free predecessor, refetch it. */
-	if (!bitcoin_blkid_eq(&topo->tip->blkid, &blk->hdr.prev_hash))
+	if (!zcore_blkid_eq(&topo->tip->blkid, &blk->hdr.prev_hash))
 		remove_tip(topo);
 	else
 		add_tip(topo, new_block(topo, blk, topo->tip->height + 1));
@@ -762,8 +762,8 @@ static void have_new_block(struct bitcoind *bitcoind UNUSED,
 	try_extend_tip(topo);
 }
 
-static void get_new_block(struct bitcoind *bitcoind,
-			  const struct bitcoin_blkid *blkid,
+static void get_new_block(struct zcored *zcored,
+			  const struct zcore_blkid *blkid,
 			  struct chain_topology *topo)
 {
 	if (!blkid) {
@@ -771,17 +771,17 @@ static void get_new_block(struct bitcoind *bitcoind,
 		updates_complete(topo);
 		return;
 	}
-	bitcoind_getrawblock(bitcoind, blkid, have_new_block, topo);
+	zcored_getrawblock(zcored, blkid, have_new_block, topo);
 }
 
 static void try_extend_tip(struct chain_topology *topo)
 {
-	bitcoind_getblockhash(topo->bitcoind, topo->tip->height + 1,
+	zcored_getblockhash(topo->zcored, topo->tip->height + 1,
 			      get_new_block, topo);
 }
 
-static void init_topo(struct bitcoind *bitcoind UNUSED,
-		      struct bitcoin_block *blk,
+static void init_topo(struct zcored *zcored UNUSED,
+		      struct zcore_block *blk,
 		      struct chain_topology *topo)
 {
 	topo->root = new_block(topo, blk, topo->max_blockheight);
@@ -789,36 +789,36 @@ static void init_topo(struct bitcoind *bitcoind UNUSED,
 	topo->tip = topo->prev_tip = topo->root;
 
 	/* In case we don't get all the way to updates_complete */
-	db_set_intvar(topo->bitcoind->ld->wallet->db,
+	db_set_intvar(topo->zcored->ld->wallet->db,
 		      "last_processed_block", topo->tip->height);
 
 	maybe_completed_init(topo);
 }
 
-static void get_init_block(struct bitcoind *bitcoind,
-			   const struct bitcoin_blkid *blkid,
+static void get_init_block(struct zcored *zcored,
+			   const struct zcore_blkid *blkid,
 			   struct chain_topology *topo)
 {
-	bitcoind_getrawblock(bitcoind, blkid, init_topo, topo);
+	zcored_getrawblock(zcored, blkid, init_topo, topo);
 }
 
-static void get_init_blockhash(struct bitcoind *bitcoind, u32 blockcount,
+static void get_init_blockhash(struct zcored *zcored, u32 blockcount,
 			       struct chain_topology *topo)
 {
-	/* If bitcoind's current blockheight is below the requested height, just
+	/* If zcored's current blockheight is below the requested height, just
 	 * go back to that height. This might be a new node catching up, or
-	 * bitcoind is processing a reorg. */
+	 * zcored is processing a reorg. */
 	if (blockcount < topo->max_blockheight) {
 		if (topo->max_blockheight == UINT32_MAX) {
 			/* Relative rescan, but we didn't know the blockheight */
 			/* Protect against underflow in subtraction.
 			 * Possible in regtest mode. */
-			if (blockcount < bitcoind->ld->config.rescan)
+			if (blockcount < zcored->ld->config.rescan)
 				topo->max_blockheight = 0;
 			else
-				topo->max_blockheight = blockcount - bitcoind->ld->config.rescan;
+				topo->max_blockheight = blockcount - zcored->ld->config.rescan;
 		} else {
-			/* Absolute blockheight, but bitcoind's blockheight isn't there yet */
+			/* Absolute blockheight, but zcored's blockheight isn't there yet */
 			/* Protect against underflow in subtraction.
 			 * Possible in regtest mode. */
 			if (blockcount < 1)
@@ -835,7 +835,7 @@ static void get_init_blockhash(struct bitcoind *bitcoind, u32 blockcount,
 	watch_for_utxo_reconfirmation(topo, topo->ld->wallet);
 
 	/* Get up to speed with topology. */
-	bitcoind_getblockhash(bitcoind, topo->max_blockheight,
+	zcored_getblockhash(zcored, topo->max_blockheight,
 			      get_init_block, topo);
 }
 
@@ -941,7 +941,7 @@ struct chain_topology *new_topology(struct lightningd *ld, struct log *log)
 	txowatch_hash_init(&topo->txowatches);
 	topo->log = log;
 	memset(topo->feerate, 0, sizeof(topo->feerate));
-	topo->bitcoind = new_bitcoind(topo, ld, log);
+	topo->zcored = new_zcored(topo, ld, log);
 	topo->poll_seconds = 30;
 	topo->feerate_uninitialized = true;
 	topo->root = NULL;
@@ -960,12 +960,12 @@ void setup_topology(struct chain_topology *topo,
 	topo->min_blockheight = min_blockheight;
 	topo->max_blockheight = max_blockheight;
 
-	/* Make sure bitcoind is started, and ready */
-	wait_for_bitcoind(topo->bitcoind);
+	/* Make sure zcored is started, and ready */
+	wait_for_zcored(topo->zcored);
 
-	bitcoind_getclientversion(topo->bitcoind);
+	zcored_getclientversion(topo->zcored);
 
-	bitcoind_getblockcount(topo->bitcoind, get_init_blockhash, topo);
+	zcored_getblockcount(topo->zcored, get_init_blockhash, topo);
 
 	tal_add_destructor(topo, destroy_chain_topology);
 

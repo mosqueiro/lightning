@@ -24,14 +24,14 @@ def test_db_dangling_peer_fix(node_factory):
 
 
 @unittest.skipIf(TEST_NETWORK != 'regtest', "Address is network specific")
-def test_block_backfill(node_factory, bitcoind, chainparams):
+def test_block_backfill(node_factory, zcored, chainparams):
     """Test whether we backfill data from the blockchain correctly.
 
     For normal operation we will process any block after the initial start
     height, or rescan height, but for gossip we actually also need to backfill
     the blocks we skipped initially. We do so on-demand, whenever we see a
     channel_announcement referencing a blockheight we haven't processed yet,
-    we fetch the entire block, extract P2WSH outputs and ask `bitcoin
+    we fetch the entire block, extract P2WSH outputs and ask `zcore
     gettxout` for each of them. We then store the block header in the `blocks`
     table and the unspent outputs in the `utxoset` table.
 
@@ -50,21 +50,21 @@ def test_block_backfill(node_factory, bitcoind, chainparams):
 
     # Get some funds to l1
     addr = l1.rpc.newaddr()['bech32']
-    bitcoind.rpc.sendtoaddress(addr, 1)
-    bitcoind.generate_block(1)
+    zcored.rpc.sendtoaddress(addr, 1)
+    zcored.generate_block(1)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 1)
 
     # Now send the needle we will go looking for later:
-    bitcoind.rpc.sendtoaddress('bcrt1qtwxd8wg5eanumk86vfeujvp48hfkgannf77evggzct048wggsrxsum2pmm', 0.00031337)
+    zcored.rpc.sendtoaddress('bcrt1qtwxd8wg5eanumk86vfeujvp48hfkgannf77evggzct048wggsrxsum2pmm', 0.00031337)
     l1.rpc.fundchannel(l2.info['id'], 10**6, announce=True)
-    wait_for(lambda: len(bitcoind.rpc.getrawmempool()) == 2)
+    wait_for(lambda: len(zcored.rpc.getrawmempool()) == 2)
 
     # Confirm and get some distance between the funding and the l3 wallet birth date
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
     wait_for(lambda: len(l1.rpc.listnodes()['nodes']) == 2)
 
     # Start the tester node, and connect it to l1. l0 should sync the gossip
-    # and call out to `bitcoind` to backfill the block.
+    # and call out to `zcored` to backfill the block.
     l3 = node_factory.get_node()
     heights = [r['height'] for r in l3.db_query("SELECT height FROM blocks")]
     assert(103 not in heights)
@@ -85,18 +85,18 @@ def test_block_backfill(node_factory, bitcoind, chainparams):
 
     # Now close the channel and make sure `l3` cleans up correctly:
     txid = l1.rpc.close(l2.info['id'])['txid']
-    bitcoind.generate_block(1, wait_for_mempool=txid)
+    zcored.generate_block(1, wait_for_mempool=txid)
     wait_for(lambda: len(l3.rpc.listchannels()['channels']) == 0)
 
 
 # Test that the max-channel-id is set correctly between
 # restarts (with forgotten channel)
-def test_max_channel_id(node_factory, bitcoind):
+def test_max_channel_id(node_factory, zcored):
     # Create a channel between two peers.
     # Close the channel and have 100 blocks happen (forget channel)
     # Restart node, create channel again. Should succeed.
     l1, l2 = node_factory.line_graph(2, fundchannel=True, wait_for_announce=True)
-    sync_blockheight(bitcoind, [l1, l2])
+    sync_blockheight(zcored, [l1, l2])
 
     # Now shutdown cleanly.
     l1.rpc.close(l2.info['id'], 0)
@@ -108,7 +108,7 @@ def test_max_channel_id(node_factory, bitcoind):
     l1.wait_for_channel_onchain(l2.info['id'])
     l2.wait_for_channel_onchain(l1.info['id'])
 
-    bitcoind.generate_block(101)
+    zcored.generate_block(101)
     wait_for(lambda: l1.rpc.listpeers()['peers'] == [])
     wait_for(lambda: l2.rpc.listpeers()['peers'] == [])
 

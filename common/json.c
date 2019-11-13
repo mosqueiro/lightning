@@ -1,7 +1,7 @@
 /* JSON core and helpers */
 #include "json.h"
 #include <assert.h>
-#include <bitcoin/pubkey.h>
+#include <zcore/pubkey.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/mem/mem.h>
 #include <ccan/str/hex/hex.h>

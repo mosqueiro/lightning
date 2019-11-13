@@ -9,19 +9,19 @@
 
 [Unit]
 Description=C-Lightning daemon
-Requires=bitcoind.service
-After=bitcoind.service
+Requires=zcored.service
+After=zcored.service
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 ExecStart=/usr/bin/lightningd --daemon --conf /etc/lightningd/lightningd.conf --pid-file=/run/lightningd/lightningd.pid
 
-# Creates /run/lightningd owned by bitcoin
+# Creates /run/lightningd owned by zcore
 RuntimeDirectory=lightningd
 
-User=bitcoin
-Group=bitcoin
+User=zcore
+Group=zcore
 Type=forking
 PIDFile=/run/lightningd/lightningd.pid
 Restart=on-failure

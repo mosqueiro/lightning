@@ -65,15 +65,15 @@ the default \fI$HOME/\.lightning\fR\. Then create a \fIconfig\fR file in this
 directory containing your configuration\.
 
 
-Your other main preparation would be to set up a mainnet Bitcoin
-fullnode, i\.e\. run a \fBbitcoind\fR(1) instance\. The rest of this quick start
+Your other main preparation would be to set up a mainnet ZCore
+fullnode, i\.e\. run a \fBzcored\fR(1) instance\. The rest of this quick start
 guide will assume you are reckless and want to spend real funds on
-Lightning\. Indicate \fInetwork=bitcoin\fR in your \fIconfig\fR file explicitly\.
+Lightning\. Indicate \fInetwork=zcore\fR in your \fIconfig\fR file explicitly\.
 
 
-C-Lightning needs to communicate with the Bitcoin Core RPC\. You can set
-this up using \fIbitcoin-datadir\fR, \fIbitcoin-rpcconnect\fR,
-\fIbitcoin-rpcport\fR, \fIbitcoin-rpcuser\fR, and \fIbitcoin-rpcpassword\fR options
+C-Lightning needs to communicate with the ZCore Core RPC\. You can set
+this up using \fIzcore-datadir\fR, \fIzcore-rpcconnect\fR,
+\fIzcore-rpcport\fR, \fIzcore-rpcuser\fR, and \fIzcore-rpcpassword\fR options
 in your \fIconfig\fR file\.
 
 
@@ -83,7 +83,7 @@ might be interested in viewing it periodically as you follow along on
 this guide\.
 
 
-Once the \fBbitcoind\fR instance is running, start \fBlightningd\fR(8):
+Once the \fBzcored\fR instance is running, start \fBlightningd\fR(8):
 
 .nf
 .RS
@@ -113,14 +113,14 @@ $ lightning-cli --lightning-dir=%HOME/.lightning getinfo
 The \fBgetinfo\fR command in particular will return a \fIblockheight\fR field,
 which indicates the block height to which \fBlightningd\fR has been
 synchronized to (this is separate from the block height that your
-\fBbitcoind\fR has been synchronized to, and will always lag behind
-\fBbitcoind\fR)\. You will have to wait until the \fIblockheight\fR has reached
-the actual blockheight of the Bitcoin network\.
+\fBzcored\fR has been synchronized to, and will always lag behind
+\fBzcored\fR)\. You will have to wait until the \fIblockheight\fR has reached
+the actual blockheight of the ZCore network\.
 
 
 Before you can get funds offchain, you need to have some funds onchain
 owned by \fBlightningd\fR (which has a separate wallet from the
-\fBbitcoind\fR it connects to)\. Get an address for \fBlightningd\fR via
+\fBzcored\fR it connects to)\. Get an address for \fBlightningd\fR via
 \fBlightning-newaddr\fR(7) command as below (\fI--lightning-dir\fR option has been
 elided, specify it if you selected your own \fIlightning-dir\fR):
 
@@ -160,11 +160,11 @@ $ lightning-cli listfunds
 .fi
 
 Now you need to look for an arbitrary Lightning node to connect to,
-which you can do by using \fBdig\fR(1) and querying \fIlseed\.bitcoinstats\.com\fR:
+which you can do by using \fBdig\fR(1) and querying \fIlseed\.zcorestats\.com\fR:
 
 .nf
 .RS
-$ dig lseed.bitcoinstats.com A
+$ dig lseed.zcorestats.com A
 
 
 .RE

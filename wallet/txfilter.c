@@ -1,6 +1,6 @@
 #include "txfilter.h"
 
-#include <bitcoin/script.h>
+#include <zcore/script.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/crypto/ripemd160/ripemd160.h>
 #include <ccan/mem/mem.h>
@@ -34,7 +34,7 @@ struct txfilter {
 };
 
 struct outpointfilter_entry {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	u32 outnum;
 };
 
@@ -50,7 +50,7 @@ static size_t outpoint_hash(const struct outpointfilter_entry *out)
 static bool outpoint_eq(const struct outpointfilter_entry *o1,
 			const struct outpointfilter_entry *o2)
 {
-	return bitcoin_txid_eq(&o1->txid, &o2->txid) && o1->outnum == o2->outnum;
+	return zcore_txid_eq(&o1->txid, &o2->txid) && o1->outnum == o2->outnum;
 }
 
 static const struct outpointfilter_entry *outpoint_keyof(const struct outpointfilter_entry *out)
@@ -98,10 +98,10 @@ void txfilter_add_derkey(struct txfilter *filter,
 }
 
 
-bool txfilter_match(const struct txfilter *filter, const struct bitcoin_tx *tx)
+bool txfilter_match(const struct txfilter *filter, const struct zcore_tx *tx)
 {
 	for (size_t i = 0; i < tx->wtx->num_outputs; i++) {
-		const u8 *oscript = bitcoin_tx_output_get_script(tmpctx, tx, i);
+		const u8 *oscript = zcore_tx_output_get_script(tmpctx, tx, i);
 
 		if (!oscript)
 			continue;
@@ -112,7 +112,7 @@ bool txfilter_match(const struct txfilter *filter, const struct bitcoin_tx *tx)
 	return false;
 }
 
-void outpointfilter_add(struct outpointfilter *of, const struct bitcoin_txid *txid, const u32 outnum)
+void outpointfilter_add(struct outpointfilter *of, const struct zcore_txid *txid, const u32 outnum)
 {
 	struct outpointfilter_entry *op;
 	if (outpointfilter_matches(of, txid, outnum))
@@ -125,7 +125,7 @@ void outpointfilter_add(struct outpointfilter *of, const struct bitcoin_txid *tx
 	outpointset_add(of->set, op);
 }
 
-bool outpointfilter_matches(struct outpointfilter *of, const struct bitcoin_txid *txid, const u32 outnum)
+bool outpointfilter_matches(struct outpointfilter *of, const struct zcore_txid *txid, const u32 outnum)
 {
 	struct outpointfilter_entry op;
 	op.txid = *txid;
@@ -133,7 +133,7 @@ bool outpointfilter_matches(struct outpointfilter *of, const struct bitcoin_txid
 	return outpointset_get(of->set, &op) != NULL;
 }
 
-void outpointfilter_remove(struct outpointfilter *of, const struct bitcoin_txid *txid, const u32 outnum)
+void outpointfilter_remove(struct outpointfilter *of, const struct zcore_txid *txid, const u32 outnum)
 {
 	struct outpointfilter_entry op;
 	op.txid = *txid;

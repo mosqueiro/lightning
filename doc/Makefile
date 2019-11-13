@@ -53,7 +53,7 @@ doc/protocol-%.svg: test/test_protocol
 
 protocol-diagrams: $(patsubst %.script, doc/protocol-%.svg, $(notdir $(wildcard test/commits/*.script)))
 
-doc/deployable-lightning.pdf: doc/deployable-lightning.lyx doc/bitcoin.bib
+doc/deployable-lightning.pdf: doc/deployable-lightning.lyx doc/zcore.bib
 	lyx -E pdf $@ $<
 
 doc/deployable-lightning.tex: doc/deployable-lightning.lyx

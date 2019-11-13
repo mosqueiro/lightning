@@ -1,10 +1,10 @@
 /* Generate various query messages. */
 #include "config.h"
 #include <assert.h>
-#include <bitcoin/address.h>
-#include <bitcoin/script.h>
-#include <bitcoin/short_channel_id.h>
-#include <bitcoin/tx.h>
+#include <zcore/address.h>
+#include <zcore/script.h>
+#include <zcore/short_channel_id.h>
+#include <zcore/tx.h>
 #include <ccan/crc32c/crc32c.h>
 #include <ccan/err/err.h>
 #include <ccan/str/hex/hex.h>
@@ -23,7 +23,7 @@ static void usage(void)
 
 int main(int argc, char *argv[])
 {
-	struct bitcoin_blkid chainhash;
+	struct zcore_blkid chainhash;
 	const tal_t *ctx = tal(NULL, char);
 	const u8 *msg;
 

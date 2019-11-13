@@ -21,10 +21,10 @@ You will need several development libraries:
 * zlib: for compression routines.
 
 For actually doing development and running the tests, you will also need:
-* pip3: to install python-bitcoinlib
+* pip3: to install python-zcorelib
 * valgrind: for extra debugging checks
 
-You will also need a version of bitcoind with segregated witness and `estimatesmartfee` economical node, such as the 0.16 or above.
+You will also need a version of zcored with segregated witness and `estimatesmartfee` economical node, such as the 0.16 or above.
 
 To Build on Ubuntu
 ---------------------
@@ -39,13 +39,13 @@ Get dependencies:
       libsqlite3-dev python python3 python3-mako net-tools zlib1g-dev libsodium-dev \
       git gettext
 
-If you don't have Bitcoin installed locally you'll need to install that
+If you don't have ZCore installed locally you'll need to install that
 as well:
 
     sudo apt-get install software-properties-common
-    sudo add-apt-repository ppa:bitcoin/bitcoin
+    sudo add-apt-repository ppa:zcore/zcore
     sudo apt-get update
-    sudo apt-get install -y bitcoind
+    sudo apt-get install -y zcored
 
 Clone lightning:
 
@@ -65,11 +65,11 @@ Build lightning:
 
 Running lightning:
 
-    bitcoind &
+    zcored &
     ./lightningd/lightningd &
     ./cli/lightning-cli help
 
-**Note**: You may need to include `testnet=1` in `bitcoin.conf`
+**Note**: You may need to include `testnet=1` in `zcore.conf`
 
 To Build on Fedora
 ---------------------
@@ -100,7 +100,7 @@ $ sudo dnf update -y && \
         sudo dnf clean all
 ```
 
-Make sure you have [bitcoind](https://github.com/bitcoin/bitcoin) available to run
+Make sure you have [zcored](https://github.com/zcore/zcore) available to run
 
 Clone lightning:
 ```
@@ -117,13 +117,13 @@ $lightning> sudo make install
 
 Running lightning (mainnet):
 ```
-$ bitcoind &
-$ lightningd --network=bitcoin
+$ zcored &
+$ lightningd --network=zcore
 ```
 
 Running lightning on testnet:
 ```
-$ bitcoind -testnet &
+$ zcored -testnet &
 $ lightningd --network=testnet
 ```
 
@@ -137,10 +137,10 @@ Get dependencies:
     # pkg install -y \
       autoconf automake gettext git gmp gmake libtool python python3 sqlite3 libsodium py36-mako bash
 
-If you don't have Bitcoin installed locally you'll need to install that
+If you don't have ZCore installed locally you'll need to install that
 as well:
 
-    # pkg install -y bitcoin-daemon bitcoin-utils
+    # pkg install -y zcore-daemon zcore-utils
 
 Clone lightning:
 
@@ -155,11 +155,11 @@ Build lightning:
 
 Running lightning:
 
-**Note**: Edit your `/usr/local/etc/bitcoin.conf` to include
+**Note**: Edit your `/usr/local/etc/zcore.conf` to include
 `rpcuser=<foo>` and `rpcpassword=<bar>` first, you may also need to
 include `testnet=1`
 
-    # service bitcoind start
+    # service zcored start
     $ ./lightningd/lightningd &
     $ ./cli/lightning-cli help
 
@@ -170,7 +170,7 @@ Use nix-shell launch a shell with a full clightning dev environment:
 
 ```
 $ nix-shell -Q -p gdb sqlite autoconf git clang libtool gmp sqlite autoconf \
-autogen automake libsodium 'python3.withPackages (p: [p.bitcoinlib])' \
+autogen automake libsodium 'python3.withPackages (p: [p.zcorelib])' \
 valgrind --run make
 ```
 
@@ -197,15 +197,15 @@ If you need Python 3.x for mako (or get a mako build error):
     $ pyenv install 3.7.4
     $ pip install --upgrade pip
 
-If you don't have bitcoind installed locally you'll need to install that
+If you don't have zcored installed locally you'll need to install that
 as well:
 
     $ brew install berkeley-db4 boost miniupnpc openssl pkg-config libevent libsodium
-    $ git clone https://github.com/bitcoin/bitcoin
-    $ cd bitcoin
+    $ git clone https://github.com/zcore/zcore
+    $ cd zcore
     $ ./autogen.sh
     $ ./configure
-    $ make src/bitcoind src/bitcoin-cli && make install
+    $ make src/zcored src/zcore-cli && make install
 
 Clone lightning:
 
@@ -224,11 +224,11 @@ Build lightning:
 
 Running lightning:
 
-**Note**: Edit your `~/Library/Application\ Support/Bitcoin/bitcoin.conf`
+**Note**: Edit your `~/Library/Application\ Support/ZCore/zcore.conf`
 to include `rpcuser=<foo>` and `rpcpassword=<bar>` first, you may also
 need to include `testnet=1`
 
-    bitcoind &
+    zcored &
     ./lightningd/lightningd &
     ./cli/lightning-cli help
 
@@ -333,8 +333,8 @@ For all the other Pi devices out there, consider using [Armbian](https://www.arm
 
 You can compile in `customize-image.sh` using the instructions for Ubuntu.
 
-A working example that compiles both bitcoind and c-lightning for Armbian can
-be found [here](https://github.com/Sjors/armbian-bitcoin-core).
+A working example that compiles both zcored and c-lightning for Armbian can
+be found [here](https://github.com/Sjors/armbian-zcore-core).
 
 Additional steps
 --------------------

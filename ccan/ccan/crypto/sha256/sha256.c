@@ -1,8 +1,8 @@
 /* MIT (BSD) license - see LICENSE file for details */
-/* SHA256 core code translated from the Bitcoin project's C++:
+/* SHA256 core code translated from the ZCore project's C++:
  *
  * src/crypto/sha256.cpp commit 417532c8acb93c36c2b6fd052b7c11b6a2906aa2
- * Copyright (c) 2014 The Bitcoin Core developers
+ * Copyright (c) 2014 The ZCore Core developers
  * Distributed under the MIT software license, see the accompanying
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.
  */

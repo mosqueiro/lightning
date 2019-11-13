@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_COMMON_HTLC_H
 #define LIGHTNING_COMMON_HTLC_H
 #include "config.h"
-#include "bitcoin/locktime.h"
+#include "zcore/locktime.h"
 #include "htlc_state.h"
 #include <assert.h>
 #include <ccan/crypto/sha256/sha256.h>

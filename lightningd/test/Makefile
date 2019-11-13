@@ -1,4 +1,4 @@
-# Note that these actually #include everything they need, except ccan/ and bitcoin/.
+# Note that these actually #include everything they need, except ccan/ and zcore/.
 # That allows for unit testing of statics, and special effects.
 LIGHTNINGD_TEST_SRC := $(wildcard lightningd/test/run-*.c)
 LIGHTNINGD_TEST_OBJS := $(LIGHTNINGD_TEST_SRC:.c=.o)
@@ -25,7 +25,7 @@ LIGHTNINGD_TEST_COMMON_OBJS :=			\
 
 update-mocks: $(LIGHTNINGD_TEST_SRC:%=update-mocks/%)
 
-$(LIGHTNINGD_TEST_PROGRAMS): $(CCAN_OBJS) $(BITCOIN_OBJS) $(WIRE_OBJS) $(LIGHTNINGD_TEST_COMMON_OBJS)
+$(LIGHTNINGD_TEST_PROGRAMS): $(CCAN_OBJS) $(ZCORE_OBJS) $(WIRE_OBJS) $(LIGHTNINGD_TEST_COMMON_OBJS)
 
 $(LIGHTNINGD_TEST_OBJS): $(LIGHTNINGD_HEADERS) $(LIGHTNINGD_SRC)
 

@@ -38,7 +38,7 @@ estimates: \fInormal\fR is the default\.
 
 Otherwise, \fIfeerate\fR is a number, with an optional suffix: \fIperkw\fR means
 the number is interpreted as satoshi-per-kilosipa (weight), and \fIperkb\fR
-means it is interpreted bitcoind-style as satoshi-per-kilobyte\. Omitting
+means it is interpreted zcored-style as satoshi-per-kilobyte\. Omitting
 the suffix is equivalent to \fIperkb\fR\.
 
 
@@ -73,7 +73,7 @@ The following error codes may occur:
 .IP \[bu]
 302: The output amount is too small, and would be considered dust\.
 .IP \[bu]
-303: Broadcasting of the funding transaction failed, the internal call to bitcoin-cli returned with an error\.
+303: Broadcasting of the funding transaction failed, the internal call to zcore-cli returned with an error\.
 
 .RE
 

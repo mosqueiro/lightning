@@ -1,7 +1,7 @@
 #ifndef LIGHTNING_GOSSIPD_ROUTING_H
 #define LIGHTNING_GOSSIPD_ROUTING_H
 #include "config.h"
-#include <bitcoin/pubkey.h>
+#include <zcore/pubkey.h>
 #include <ccan/crypto/siphash24/siphash24.h>
 #include <ccan/htable/htable_type.h>
 #include <ccan/intmap/intmap.h>
@@ -176,8 +176,8 @@ struct pending_cannouncement {
 	struct short_channel_id short_channel_id;
 	struct node_id node_id_1;
 	struct node_id node_id_2;
-	struct pubkey bitcoin_key_1;
-	struct pubkey bitcoin_key_2;
+	struct pubkey zcore_key_1;
+	struct pubkey zcore_key_2;
 
 	/* Automagically turns to NULL of peer freed */
 	struct peer *peer_softref;

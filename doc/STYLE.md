@@ -193,7 +193,7 @@ warning if it was not part of a released version yet, or the removal is
 urgent.
 
 In order to ensure that each pull request has the required `Changelog-*:` line
-for the changelog our trusty @bitcoin-bot will check logs whenever a pull
+for the changelog our trusty @zcore-bot will check logs whenever a pull
 request is created or updated and search for the required line. If there is no
 such line it'll mark the pull request as `pending` to call out the need for an
 entry.

@@ -1,4 +1,4 @@
-from bitcoin.rpc import RawProxy
+from zcore.rpc import RawProxy
 from decimal import Decimal
 from fixtures import *  # noqa: F401,F403
 from fixtures import TEST_NETWORK
@@ -88,18 +88,18 @@ def test_db_upgrade(node_factory):
     assert(upgrades[0]['lightning_version'] == version)
 
 
-def test_bitcoin_failure(node_factory, bitcoind):
+def test_zcore_failure(node_factory, zcored):
     l1 = node_factory.get_node()
 
     # Make sure we're not failing it between getblockhash and getblock.
-    sync_blockheight(bitcoind, [l1])
+    sync_blockheight(zcored, [l1])
 
-    def crash_bitcoincli(r):
+    def crash_zcorecli(r):
         return {'error': 'go away'}
 
     # This is not a JSON-RPC response by purpose
-    l1.daemon.rpcproxy.mock_rpc('estimatesmartfee', crash_bitcoincli)
-    l1.daemon.rpcproxy.mock_rpc('getblockhash', crash_bitcoincli)
+    l1.daemon.rpcproxy.mock_rpc('estimatesmartfee', crash_zcorecli)
+    l1.daemon.rpcproxy.mock_rpc('getblockhash', crash_zcorecli)
 
     # This should cause both estimatefee and getblockhash fail
     l1.daemon.wait_for_logs(['estimatesmartfee .* exited with status 1',
@@ -113,39 +113,39 @@ def test_bitcoin_failure(node_factory, bitcoind):
     l1.daemon.rpcproxy.mock_rpc('estimatesmartfee', None)
     l1.daemon.rpcproxy.mock_rpc('getblockhash', None)
 
-    bitcoind.generate_block(5)
-    sync_blockheight(bitcoind, [l1])
+    zcored.generate_block(5)
+    sync_blockheight(zcored, [l1])
 
 
-def test_bitcoin_ibd(node_factory, bitcoind):
-    """Test that we recognize bitcoin in initial download mode"""
-    info = bitcoind.rpc.getblockchaininfo()
+def test_zcore_ibd(node_factory, zcored):
+    """Test that we recognize zcore in initial download mode"""
+    info = zcored.rpc.getblockchaininfo()
     info['initialblockdownload'] = True
 
     l1 = node_factory.get_node(start=False)
     l1.daemon.rpcproxy.mock_rpc('getblockchaininfo', info)
 
-    l1.start(wait_for_bitcoind_sync=False)
+    l1.start(wait_for_zcored_sync=False)
 
     # This happens before the Starting message start() waits for.
     assert l1.daemon.is_in_log('Waiting for initial block download')
-    assert 'warning_bitcoind_sync' in l1.rpc.getinfo()
+    assert 'warning_zcored_sync' in l1.rpc.getinfo()
 
     # "Finish" IDB.
     l1.daemon.rpcproxy.mock_rpc('getblockchaininfo', None)
 
-    l1.daemon.wait_for_log('Bitcoind now synced')
-    assert 'warning_bitcoind_sync' not in l1.rpc.getinfo()
+    l1.daemon.wait_for_log('ZCored now synced')
+    assert 'warning_zcored_sync' not in l1.rpc.getinfo()
 
 
-def test_lightningd_still_loading(node_factory, bitcoind, executor):
-    """Test that we recognize we haven't got all blocks from bitcoind"""
+def test_lightningd_still_loading(node_factory, zcored, executor):
+    """Test that we recognize we haven't got all blocks from zcored"""
 
     mock_release = Event()
 
     # This is slow enough that we're going to notice.
     def mock_getblock(r):
-        conf_file = os.path.join(bitcoind.bitcoin_dir, 'bitcoin.conf')
+        conf_file = os.path.join(zcored.zcore_dir, 'zcore.conf')
         brpc = RawProxy(btc_conf_file=conf_file)
         if r['params'][0] == slow_blockid:
             mock_release.wait(TIMEOUT)
@@ -156,7 +156,7 @@ def test_lightningd_still_loading(node_factory, bitcoind, executor):
         }
 
     # Start it, establish channel, get extra funds.
-    l1, l2 = node_factory.line_graph(2, opts={'may_reconnect': True, 'wait_for_bitcoind_sync': False})
+    l1, l2 = node_factory.line_graph(2, opts={'may_reconnect': True, 'wait_for_zcored_sync': False})
 
     # Balance l1<->l2 channel
     l1.pay(l2, 10**9 // 2)
@@ -167,18 +167,18 @@ def test_lightningd_still_loading(node_factory, bitcoind, executor):
     l3 = node_factory.get_node()
 
     # Now make sure it's behind.
-    bitcoind.generate_block(2)
+    zcored.generate_block(2)
     # Make sure l2/l3 are synced
-    sync_blockheight(bitcoind, [l2, l3])
+    sync_blockheight(zcored, [l2, l3])
 
     # Make it slow grabbing the final block.
-    slow_blockid = bitcoind.rpc.getblockhash(bitcoind.rpc.getblockcount())
+    slow_blockid = zcored.rpc.getblockhash(zcored.rpc.getblockcount())
     l1.daemon.rpcproxy.mock_rpc('getblock', mock_getblock)
 
-    l1.start(wait_for_bitcoind_sync=False)
+    l1.start(wait_for_zcored_sync=False)
 
     # It will warn about being out-of-sync.
-    assert 'warning_bitcoind_sync' not in l1.rpc.getinfo()
+    assert 'warning_zcored_sync' not in l1.rpc.getinfo()
     assert 'warning_lightningd_sync' in l1.rpc.getinfo()
 
     # Payments will fail.  FIXME: More informative msg?
@@ -259,7 +259,7 @@ def test_ping(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "needs --dev-disconnect")
-def test_htlc_sig_persistence(node_factory, bitcoind, executor):
+def test_htlc_sig_persistence(node_factory, zcored, executor):
     """Interrupt a payment between two peers, then fail and recover funds using the HTLC sig.
     """
     # Feerates identical so we don't get gratuitous commit to update them
@@ -285,7 +285,7 @@ def test_htlc_sig_persistence(node_factory, bitcoind, executor):
     # Make sure it broadcasts to chain.
     l2.wait_for_channel_onchain(l1.info['id'])
     l2.stop()
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.start()
 
     assert l1.daemon.is_in_log(r'Loaded 1 HTLC signatures from DB')
@@ -293,10 +293,10 @@ def test_htlc_sig_persistence(node_factory, bitcoind, executor):
         r'Peer permanent failure in CHANNELD_NORMAL: Funding transaction spent',
         r'Propose handling THEIR_UNILATERAL/OUR_HTLC by OUR_HTLC_TIMEOUT_TO_US'
     ])
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     l1.daemon.wait_for_log("Broadcasting OUR_HTLC_TIMEOUT_TO_US")
     time.sleep(3)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_logs([
         r'Owning output . (\d+)sat .SEGWIT. txid',
     ])
@@ -307,7 +307,7 @@ def test_htlc_sig_persistence(node_factory, bitcoind, executor):
 
 
 @unittest.skipIf(not DEVELOPER, "needs to deactivate shadow routing")
-def test_htlc_out_timeout(node_factory, bitcoind, executor):
+def test_htlc_out_timeout(node_factory, zcored, executor):
     """Test that we drop onchain if the peer doesn't time out HTLC"""
 
     # HTLC 1->2, 1 fails after it's irrevocably committed, can't reconnect
@@ -341,14 +341,14 @@ def test_htlc_out_timeout(node_factory, bitcoind, executor):
     else:
         shadowlen = 0
 
-    bitcoind.generate_block(5 + 1 + shadowlen)
+    zcored.generate_block(5 + 1 + shadowlen)
     time.sleep(3)
     assert not l1.daemon.is_in_log('hit deadline')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     l1.daemon.wait_for_log('Offered HTLC 0 SENT_ADD_ACK_REVOCATION cltv .* hit deadline')
     l1.daemon.wait_for_log('sendrawtx exit 0')
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
@@ -357,10 +357,10 @@ def test_htlc_out_timeout(node_factory, bitcoind, executor):
                              'Propose handling OUR_UNILATERAL/DELAYED_OUTPUT_TO_US by OUR_DELAYED_RETURN_TO_WALLET .* after 5 blocks'])
 
     l1.daemon.wait_for_log('sendrawtx exit 0')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     l1.daemon.wait_for_log('Propose handling OUR_HTLC_TIMEOUT_TX/DELAYED_OUTPUT_TO_US by OUR_DELAYED_RETURN_TO_WALLET .* after 5 blocks')
-    bitcoind.generate_block(4)
+    zcored.generate_block(4)
     # It should now claim both the to-local and htlc-timeout-tx outputs.
     l1.daemon.wait_for_logs(['Broadcasting OUR_DELAYED_RETURN_TO_WALLET',
                              'Broadcasting OUR_DELAYED_RETURN_TO_WALLET',
@@ -368,13 +368,13 @@ def test_htlc_out_timeout(node_factory, bitcoind, executor):
                              'sendrawtx exit 0'])
 
     # Now, 100 blocks it should be done.
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
 
 @unittest.skipIf(not DEVELOPER, "needs to deactivate shadow routing")
-def test_htlc_in_timeout(node_factory, bitcoind, executor):
+def test_htlc_in_timeout(node_factory, zcored, executor):
     """Test that we drop onchain if the peer doesn't accept fulfilled HTLC"""
 
     # HTLC 1->2, 1 fails after 2 has sent committed the fulfill
@@ -389,7 +389,7 @@ def test_htlc_in_timeout(node_factory, bitcoind, executor):
     chanid = l1.fund_channel(l2, 10**6)
 
     l1.wait_channel_active(chanid)
-    sync_blockheight(bitcoind, [l1, l2])
+    sync_blockheight(zcored, [l1, l2])
 
     amt = 200000000
     inv = l2.rpc.invoice(amt, 'test_htlc_in_timeout', 'desc')['bolt11']
@@ -407,27 +407,27 @@ def test_htlc_in_timeout(node_factory, bitcoind, executor):
         shadowlen = 6 * status['shadow'].count('Added 6 cltv delay for shadow')
     else:
         shadowlen = 0
-    bitcoind.generate_block(2 + shadowlen)
+    zcored.generate_block(2 + shadowlen)
     assert not l2.daemon.is_in_log('hit deadline')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     l2.daemon.wait_for_log('Fulfilled HTLC 0 SENT_REMOVE_COMMIT cltv .* hit deadline')
     l2.daemon.wait_for_log('sendrawtx exit 0')
-    l2.bitcoin.generate_block(1)
+    l2.zcore.generate_block(1)
     l2.daemon.wait_for_log(' to ONCHAIN')
     l1.daemon.wait_for_log(' to ONCHAIN')
 
     # L2 will collect HTLC (iff no shadow route)
     l2.daemon.wait_for_log('Propose handling OUR_UNILATERAL/THEIR_HTLC by OUR_HTLC_SUCCESS_TX .* after 0 blocks')
     l2.daemon.wait_for_log('sendrawtx exit 0')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l2.daemon.wait_for_log('Propose handling OUR_HTLC_SUCCESS_TX/DELAYED_OUTPUT_TO_US by OUR_DELAYED_RETURN_TO_WALLET .* after 5 blocks')
-    bitcoind.generate_block(4)
+    zcored.generate_block(4)
     l2.daemon.wait_for_log('Broadcasting OUR_DELAYED_RETURN_TO_WALLET')
     l2.daemon.wait_for_log('sendrawtx exit 0')
 
     # Now, 100 blocks it should be both done.
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
@@ -449,8 +449,8 @@ def test_bech32_funding(node_factory, chainparams):
     # probably overly paranoid checking
     wallettxid = res['wallettxid']
 
-    wallettx = l1.bitcoin.rpc.getrawtransaction(wallettxid, True)
-    fundingtx = l1.bitcoin.rpc.decoderawtransaction(res['fundingtx']['tx'])
+    wallettx = l1.zcore.rpc.getrawtransaction(wallettxid, True)
+    fundingtx = l1.zcore.rpc.decoderawtransaction(res['fundingtx']['tx'])
 
     def is_p2wpkh(output):
         return output['type'] == 'witness_v0_keyhash' and \
@@ -460,7 +460,7 @@ def test_bech32_funding(node_factory, chainparams):
     assert only_one(fundingtx['vin'])['txid'] == res['wallettxid']
 
 
-def test_withdraw(node_factory, bitcoind, chainparams):
+def test_withdraw(node_factory, zcored, chainparams):
     amount = 1000000
     # Don't get any funds from previous runs.
     l1 = node_factory.get_node(random_hsm=True)
@@ -469,15 +469,15 @@ def test_withdraw(node_factory, bitcoind, chainparams):
 
     # Add some funds to withdraw later
     for i in range(10):
-        l1.bitcoin.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
+        l1.zcore.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 10)
 
     # Reach around into the db to check that outputs were added
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=0')[0]['c'] == 10
 
-    waddr = l1.bitcoin.getnewaddress()
+    waddr = l1.zcore.getnewaddress()
     # Now attempt to withdraw some (making sure we collect multiple inputs)
     with pytest.raises(RpcError):
         l1.rpc.withdraw('not an address', amount)
@@ -490,8 +490,8 @@ def test_withdraw(node_factory, bitcoind, chainparams):
 
     out = l1.rpc.withdraw(waddr, 2 * amount)
 
-    # Make sure bitcoind received the withdrawal
-    unspent = l1.bitcoin.rpc.listunspent(0)
+    # Make sure zcored received the withdrawal
+    unspent = l1.zcore.rpc.listunspent(0)
     withdrawal = [u for u in unspent if u['txid'] == out['txid']]
 
     assert(withdrawal[0]['amount'] == Decimal('0.02'))
@@ -503,7 +503,7 @@ def test_withdraw(node_factory, bitcoind, chainparams):
     # lightningd uses P2SH-P2WPKH
     waddr = l2.rpc.newaddr('bech32')['bech32']
     l1.rpc.withdraw(waddr, 2 * amount)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     # Make sure l2 received the withdrawal.
     wait_for(lambda: len(l2.rpc.listfunds()['outputs']) == 1)
@@ -526,7 +526,7 @@ def test_withdraw(node_factory, bitcoind, chainparams):
     with pytest.raises(RpcError):
         l1.rpc.withdraw('tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxxxxxx', 2 * amount)
     l1.rpc.withdraw(waddr, 2 * amount)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     # Now make sure additional two of them were marked as spent
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=2')[0]['c'] == 6
 
@@ -540,7 +540,7 @@ def test_withdraw(node_factory, bitcoind, chainparams):
     with pytest.raises(RpcError):
         l1.rpc.withdraw('tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qxxxxxx', 2 * amount)
     l1.rpc.withdraw(waddr, 2 * amount)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     # Now make sure additional two of them were marked as spent
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=2')[0]['c'] == 8
 
@@ -575,7 +575,7 @@ def test_withdraw(node_factory, bitcoind, chainparams):
 
     # Test withdrawal to self.
     l1.rpc.withdraw(l1.rpc.newaddr('bech32')['bech32'], 'all', minconf=0)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     assert l1.db_query('SELECT COUNT(*) as c FROM outputs WHERE status=0')[0]['c'] == 1
 
     l1.rpc.withdraw(waddr, 'all', minconf=0)
@@ -586,7 +586,7 @@ def test_withdraw(node_factory, bitcoind, chainparams):
         l1.rpc.withdraw(waddr, 'all')
 
 
-def test_minconf_withdraw(node_factory, bitcoind):
+def test_minconf_withdraw(node_factory, zcored):
     """Issue 2518: ensure that ridiculous confirmation levels don't overflow
 
     The number of confirmations is used to compute a maximum height that is to
@@ -602,24 +602,24 @@ def test_minconf_withdraw(node_factory, bitcoind):
 
     # Add some funds to withdraw later
     for i in range(10):
-        l1.bitcoin.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
+        l1.zcore.rpc.sendtoaddress(addr, amount / 10**8 + 0.01)
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 10)
     with pytest.raises(RpcError):
         l1.rpc.withdraw(destination=addr, satoshi=10000, feerate='normal', minconf=9999999)
 
 
-def test_addfunds_from_block(node_factory, bitcoind):
+def test_addfunds_from_block(node_factory, zcored):
     """Send funds to the daemon without telling it explicitly
     """
-    # Previous runs with same bitcoind can leave funds!
+    # Previous runs with same zcored can leave funds!
     l1 = node_factory.get_node(random_hsm=True)
 
     addr = l1.rpc.newaddr()['bech32']
-    bitcoind.rpc.sendtoaddress(addr, 0.1)
-    bitcoind.generate_block(1)
+    zcored.rpc.sendtoaddress(addr, 0.1)
+    zcored.generate_block(1)
 
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) == 1)
 
@@ -633,7 +633,7 @@ def test_addfunds_from_block(node_factory, bitcoind):
     # Send all our money to a P2WPKH address this time.
     addr = l1.rpc.newaddr("bech32")['bech32']
     l1.rpc.withdraw(addr, "all")
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     time.sleep(1)
 
     # The address we detect must match what was paid to.
@@ -652,7 +652,7 @@ def test_io_logging(node_factory, executor):
     pid1 = l1.subd_pid('channeld')
 
     l1.daemon.wait_for_log('sendrawtx exit 0')
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l1.daemon.wait_for_log(' to CHANNELD_NORMAL')
 
     pid2 = l2.subd_pid('channeld')
@@ -734,7 +734,7 @@ def test_address(node_factory):
     l2.rpc.connect(l1.info['id'], l1.daemon.opts['addr'])
 
 
-def test_listconfigs(node_factory, bitcoind, chainparams):
+def test_listconfigs(node_factory, zcored, chainparams):
     l1 = node_factory.get_node()
 
     configs = l1.rpc.listconfigs()
@@ -986,7 +986,7 @@ def test_daemon_option(node_factory):
 
 @flaky
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_blockchaintrack(node_factory, bitcoind):
+def test_blockchaintrack(node_factory, zcored):
     """Check that we track the blockchain correctly across reorgs
     """
     l1 = node_factory.get_node(random_hsm=True)
@@ -997,13 +997,13 @@ def test_blockchaintrack(node_factory, bitcoind):
     # and we try to add a block twice when rescanning:
     l1.restart()
 
-    height = bitcoind.rpc.getblockcount()   # 101
+    height = zcored.rpc.getblockcount()   # 101
 
     # At height 111 we receive an incoming payment
-    hashes = bitcoind.generate_block(9)     # 102-110
-    bitcoind.rpc.sendtoaddress(addr, 1)
+    hashes = zcored.generate_block(9)     # 102-110
+    zcored.rpc.sendtoaddress(addr, 1)
     time.sleep(1)  # mempool is still unpredictable
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     l1.daemon.wait_for_log(r'Owning output.* \(P2SH\).* CONFIRMED')
     outputs = l1.rpc.listfunds()['outputs']
@@ -1011,17 +1011,17 @@ def test_blockchaintrack(node_factory, bitcoind):
 
     ######################################################################
     # Second failure scenario: perform a 20 block reorg
-    bitcoind.generate_block(10)
+    zcored.generate_block(10)
     l1.daemon.wait_for_log('Adding block {}: '.format(height + 20))
 
     # Now reorg out with a longer fork of 21 blocks
-    bitcoind.rpc.invalidateblock(hashes[0])
-    bitcoind.wait_for_log(r'InvalidChainFound: invalid block=.*  height={}'
+    zcored.rpc.invalidateblock(hashes[0])
+    zcored.wait_for_log(r'InvalidChainFound: invalid block=.*  height={}'
                           .format(height + 1))
-    hashes = bitcoind.generate_block(30)
+    hashes = zcored.generate_block(30)
     time.sleep(1)
 
-    bitcoind.rpc.getblockcount()
+    zcored.rpc.getblockcount()
     l1.daemon.wait_for_log('Adding block {}: '.format(height + 30))
 
     # Our funds got reorged out, we should not have any funds that are confirmed
@@ -1031,7 +1031,7 @@ def test_blockchaintrack(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_funding_reorg_private(node_factory, bitcoind):
+def test_funding_reorg_private(node_factory, zcored):
     """Change funding tx height after lockin, between node restart.
     """
     # Rescan to detect reorg at restart and may_reconnect so channeld
@@ -1040,20 +1040,20 @@ def test_funding_reorg_private(node_factory, bitcoind):
             'allow_bad_gossip': True}
     l1, l2 = node_factory.line_graph(2, fundchannel=False, opts=opts)
     l1.fundwallet(10000000)
-    sync_blockheight(bitcoind, [l1])                # height 102
-    bitcoind.generate_block(3)                      # heights 103-105
+    sync_blockheight(zcored, [l1])                # height 102
+    zcored.generate_block(3)                      # heights 103-105
 
     l1.rpc.fundchannel(l2.info['id'], "all", announce=False)
-    bitcoind.generate_block(1)                      # height 106
+    zcored.generate_block(1)                      # height 106
     wait_for(lambda: only_one(l1.rpc.listpeers()['peers'][0]['channels'])['status']
              == ['CHANNELD_AWAITING_LOCKIN:Funding needs 1 more confirmations for lockin.'])
-    bitcoind.generate_block(1)                      # height 107
+    zcored.generate_block(1)                      # height 107
     l1.wait_channel_active('106x1x0')
     l1.stop()
 
     # Create a fork that changes short_channel_id from 106x1x0 to 108x1x0
-    bitcoind.simple_reorg(106, 2)                   # heights 106-108
-    bitcoind.generate_block(1)                      # height 109 (to reach minimum_depth=2 again)
+    zcored.simple_reorg(106, 2)                   # heights 106-108
+    zcored.generate_block(1)                      # height 109 (to reach minimum_depth=2 again)
     l1.start()
 
     # l2 was running, sees last stale block being removed
@@ -1064,23 +1064,23 @@ def test_funding_reorg_private(node_factory, bitcoind):
     wait_for(lambda: [c['active'] for c in l2.rpc.listchannels('108x1x0')['channels']] == [True, True])
 
     l1.rpc.close(l2.info['id'])
-    bitcoind.generate_block(1, True)
+    zcored.generate_block(1, True)
     l1.daemon.wait_for_log(r'Deleting channel')
     l2.daemon.wait_for_log(r'Deleting channel')
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_funding_reorg_remote_lags(node_factory, bitcoind):
+def test_funding_reorg_remote_lags(node_factory, zcored):
     """Nodes may disagree about short_channel_id before channel announcement
     """
     # may_reconnect so channeld will restart; bad gossip can happen due to reorg
     opts = {'funding-confirms': 1, 'may_reconnect': True, 'allow_bad_gossip': True}
     l1, l2 = node_factory.line_graph(2, fundchannel=False, opts=opts)
     l1.fundwallet(10000000)
-    sync_blockheight(bitcoind, [l1])                # height 102
+    sync_blockheight(zcored, [l1])                # height 102
 
     l1.rpc.fundchannel(l2.info['id'], "all")
-    bitcoind.generate_block(5)                      # heights 103 - 107
+    zcored.generate_block(5)                      # heights 103 - 107
     l1.wait_channel_active('103x1x0')
 
     # Make l2 temporary blind for blocks > 107
@@ -1091,7 +1091,7 @@ def test_funding_reorg_remote_lags(node_factory, bitcoind):
     l2.daemon.rpcproxy.mock_rpc('getblockhash', no_more_blocks)
 
     # Reorg changes short_channel_id 103x1x0 to 103x2x0, l1 sees it, restarts channeld
-    bitcoind.simple_reorg(102, 1)                   # heights 102 - 108
+    zcored.simple_reorg(102, 1)                   # heights 102 - 108
     l1.daemon.wait_for_log(r'Peer transient failure .* short_channel_id changed to 103x2x0 \(was 103x1x0\)')
 
     wait_for(lambda: only_one(l2.rpc.listpeers()['peers'][0]['channels'])['status'] == [
@@ -1109,12 +1109,12 @@ def test_funding_reorg_remote_lags(node_factory, bitcoind):
         'CHANNELD_NORMAL:Funding transaction locked. Channel announced.'])
 
     l1.rpc.close(l2.info['id'])
-    bitcoind.generate_block(1, True)
+    zcored.generate_block(1, True)
     l1.daemon.wait_for_log(r'Deleting channel')
     l2.daemon.wait_for_log(r'Deleting channel')
 
 
-def test_rescan(node_factory, bitcoind):
+def test_rescan(node_factory, zcored):
     """Test the rescan option
     """
     l1 = node_factory.get_node()
@@ -1142,7 +1142,7 @@ def test_rescan(node_factory, bitcoind):
     # the current height
     l1.daemon.opts['rescan'] = -500000
     l1.stop()
-    bitcoind.generate_block(4)
+    zcored.generate_block(4)
     l1.start()
     l1.daemon.wait_for_log(r'Adding block 105')
     assert not l1.daemon.is_in_log(r'Adding block 102')
@@ -1177,7 +1177,7 @@ def test_reserve_enforcement(node_factory, executor):
 
 
 @unittest.skipIf(not DEVELOPER, "needs dev_disconnect")
-def test_htlc_send_timeout(node_factory, bitcoind):
+def test_htlc_send_timeout(node_factory, zcored):
     """Test that we don't commit an HTLC to an unreachable node."""
     # Feerates identical so we don't get gratuitous commit to update them
     l1 = node_factory.get_node(options={'log-level': 'io'},
@@ -1198,7 +1198,7 @@ def test_htlc_send_timeout(node_factory, bitcoind):
     subprocess.run(['kill', '-USR1', l2.subd_pid('channeld')])
 
     # Make sure channels get announced.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make sure we have 30 seconds without any incoming traffic from l3 to l2
     # so it tries to ping before sending WIRE_COMMITMENT_SIGNED.
@@ -1266,14 +1266,14 @@ def test_feerates(node_factory):
     # Query feerates (shouldn't give any!)
     wait_for(lambda: len(l1.rpc.feerates('perkw')['perkw']) == 2)
     feerates = l1.rpc.feerates('perkw')
-    assert feerates['warning'] == 'Some fee estimates unavailable: bitcoind startup?'
+    assert feerates['warning'] == 'Some fee estimates unavailable: zcored startup?'
     assert 'perkb' not in feerates
     assert feerates['perkw']['max_acceptable'] == 2**32 - 1
     assert feerates['perkw']['min_acceptable'] == 253
 
     wait_for(lambda: len(l1.rpc.feerates('perkb')['perkb']) == 2)
     feerates = l1.rpc.feerates('perkb')
-    assert feerates['warning'] == 'Some fee estimates unavailable: bitcoind startup?'
+    assert feerates['warning'] == 'Some fee estimates unavailable: zcored startup?'
     assert 'perkw' not in feerates
     assert feerates['perkb']['max_acceptable'] == (2**32 - 1)
     assert feerates['perkb']['min_acceptable'] == 253 * 4
@@ -1283,7 +1283,7 @@ def test_feerates(node_factory):
     wait_for(lambda: len(l1.rpc.feerates('perkw')['perkw']) == 3)
     feerates = l1.rpc.feerates('perkw')
     assert feerates['perkw']['urgent'] == 15000
-    assert feerates['warning'] == 'Some fee estimates unavailable: bitcoind startup?'
+    assert feerates['warning'] == 'Some fee estimates unavailable: zcored startup?'
     assert 'perkb' not in feerates
     assert feerates['perkw']['max_acceptable'] == 15000 * 10
     assert feerates['perkw']['min_acceptable'] == 253
@@ -1293,7 +1293,7 @@ def test_feerates(node_factory):
     feerates = l1.rpc.feerates('perkb')
     assert feerates['perkb']['urgent'] == 15000 * 4
     assert feerates['perkb']['normal'] == 25000
-    assert feerates['warning'] == 'Some fee estimates unavailable: bitcoind startup?'
+    assert feerates['warning'] == 'Some fee estimates unavailable: zcored startup?'
     assert 'perkw' not in feerates
     assert feerates['perkb']['max_acceptable'] == 15000 * 4 * 10
     assert feerates['perkb']['min_acceptable'] == 253 * 4
@@ -1322,7 +1322,7 @@ def test_logging(node_factory):
     logpath_moved = os.path.join(l1.daemon.lightning_dir, 'logfile_moved')
 
     l1.daemon.rpcproxy.start()
-    l1.daemon.opts['bitcoin-rpcport'] = l1.daemon.rpcproxy.rpcport
+    l1.daemon.opts['zcore-rpcport'] = l1.daemon.rpcproxy.rpcport
     TailableProc.start(l1.daemon)
     wait_for(lambda: os.path.exists(logpath))
 
@@ -1454,7 +1454,7 @@ def test_check_command(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "need log_all_io")
-def test_bad_onion(node_factory, bitcoind):
+def test_bad_onion(node_factory, zcored):
     """Test that we get a reasonable error from sendpay when an onion is bad"""
     l1, l2, l3, l4 = node_factory.line_graph(4, wait_for_announce=True,
                                              opts={'log_all_io': True})
@@ -1526,18 +1526,18 @@ def test_newaddr_deprecated(node_factory, chainparams):
     assert bech32['address'].startswith(chainparams['bip173_prefix'])
 
 
-def test_bitcoind_fail_first(node_factory, bitcoind, executor):
-    """Make sure we handle spurious bitcoin-cli failures during startup
+def test_zcored_fail_first(node_factory, zcored, executor):
+    """Make sure we handle spurious zcore-cli failures during startup
 
     See [#2687](https://github.com/ElementsProject/lightning/issues/2687) for
     details
 
     """
-    # Do not start the lightning node since we need to instrument bitcoind
+    # Do not start the lightning node since we need to instrument zcored
     # first.
     l1 = node_factory.get_node(start=False)
 
-    # Instrument bitcoind to fail some queries first.
+    # Instrument zcored to fail some queries first.
     def mock_fail(*args):
         raise ValueError()
 

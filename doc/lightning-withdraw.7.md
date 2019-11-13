@@ -12,7 +12,7 @@ DESCRIPTION
 The **withdraw** RPC command sends funds from c-lightning’s internal
 wallet to the address specified in *destination*.
 
-The address can be of any Bitcoin accepted type, including bech32.
+The address can be of any ZCore accepted type, including bech32.
 
 *satoshi* is the amount to be withdrawn from the internal wallet
 (expressed, as name suggests, in satoshi). The string *all* can be used
@@ -28,7 +28,7 @@ is the default.
 
 Otherwise, *feerate* is a number, with an optional suffix: *perkw* means
 the number is interpreted as satoshi-per-kilosipa (weight), and *perkb*
-means it is interpreted bitcoind-style as satoshi-per-kilobyte. Omitting
+means it is interpreted zcored-style as satoshi-per-kilobyte. Omitting
 the suffix is equivalent to *perkb*.
 
 *minconf* specifies the minimum number of confirmations that used
@@ -42,8 +42,8 @@ RETURN VALUE
 
 On success, an object with attributes *tx* and *txid* will be returned.
 
-*tx* represents the raw bitcoin, fully signed, transaction and *txid*
-represent the bitcoin transaction id.
+*tx* represents the raw zcore, fully signed, transaction and *txid*
+represent the zcore transaction id.
 
 On failure, an error is reported and the withdrawal transaction is not
 created.

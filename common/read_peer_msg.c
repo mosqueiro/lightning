@@ -133,7 +133,7 @@ out:
 /* takes iff returns true */
 bool handle_timestamp_filter(struct per_peer_state *pps, const u8 *msg TAKES)
 {
-	struct bitcoin_blkid chain_hash; /* FIXME: don't ignore! */
+	struct zcore_blkid chain_hash; /* FIXME: don't ignore! */
 	u32 first_timestamp, timestamp_range;
 
 	if (!fromwire_gossip_timestamp_filter(msg, &chain_hash,

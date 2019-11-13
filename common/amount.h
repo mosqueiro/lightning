@@ -7,8 +7,8 @@
 #include <stdbool.h>
 
 #define MSAT_PER_SAT ((u64)1000)
-#define SAT_PER_BTC ((u64)100000000)
-#define MSAT_PER_BTC (MSAT_PER_SAT * SAT_PER_BTC)
+#define SAT_PER_ZCR ((u64)100000000)
+#define MSAT_PER_ZCR (MSAT_PER_SAT * SAT_PER_ZCR)
 
 /* Use these to wrap amounts, for typesafety.  Please use ops where possible,
  * rather than accessing the members directly. */

@@ -48,8 +48,8 @@ msgdata,opening_got_offer_reply,rejection,?wirestring,
 # This gives their sig, means we can broadcast tx: we're done.
 msgtype,opening_funder_reply,6101
 msgdata,opening_funder_reply,their_config,channel_config,
-msgdata,opening_funder_reply,first_commit,bitcoin_tx,
-msgdata,opening_funder_reply,first_commit_sig,bitcoin_signature,
+msgdata,opening_funder_reply,first_commit,zcore_tx,
+msgdata,opening_funder_reply,first_commit_sig,zcore_signature,
 msgdata,opening_funder_reply,pps,per_peer_state,
 msgdata,opening_funder_reply,revocation_basepoint,pubkey,
 msgdata,opening_funder_reply,payment_basepoint,pubkey,
@@ -58,7 +58,7 @@ msgdata,opening_funder_reply,delayed_payment_basepoint,pubkey,
 msgdata,opening_funder_reply,their_per_commit_point,pubkey,
 msgdata,opening_funder_reply,minimum_depth,u32,
 msgdata,opening_funder_reply,remote_fundingkey,pubkey,
-msgdata,opening_funder_reply,funding_txid,bitcoin_txid,
+msgdata,opening_funder_reply,funding_txid,zcore_txid,
 msgdata,opening_funder_reply,funding_txout,u16,
 msgdata,opening_funder_reply,feerate_per_kw,u32,
 msgdata,opening_funder_reply,our_channel_reserve_satoshis,amount_sat,
@@ -84,7 +84,7 @@ msgdata,opening_funder_start_reply,upfront_shutdown_negotiated,bool,
 # tx that will be paid for by an external wallet
 # response to this is a normal `opening_funder_reply` ??
 msgtype,opening_funder_complete,6012
-msgdata,opening_funder_complete,funding_txid,bitcoin_txid,
+msgdata,opening_funder_complete,funding_txid,zcore_txid,
 msgdata,opening_funder_complete,funding_txout,u16,
 
 #master->openingd: cancel channel establishment for a funding
@@ -98,8 +98,8 @@ msgdata,opening_funder_failed,reason,wirestring,
 # This gives their txid and info, means we can send funding_signed: we're done.
 msgtype,opening_fundee,6003
 msgdata,opening_fundee,their_config,channel_config,
-msgdata,opening_fundee,first_commit,bitcoin_tx,
-msgdata,opening_fundee,first_commit_sig,bitcoin_signature,
+msgdata,opening_fundee,first_commit,zcore_tx,
+msgdata,opening_fundee,first_commit_sig,zcore_signature,
 msgdata,opening_fundee,pps,per_peer_state,
 msgdata,opening_fundee,revocation_basepoint,pubkey,
 msgdata,opening_fundee,payment_basepoint,pubkey,
@@ -107,7 +107,7 @@ msgdata,opening_fundee,htlc_basepoint,pubkey,
 msgdata,opening_fundee,delayed_payment_basepoint,pubkey,
 msgdata,opening_fundee,their_per_commit_point,pubkey,
 msgdata,opening_fundee,remote_fundingkey,pubkey,
-msgdata,opening_fundee,funding_txid,bitcoin_txid,
+msgdata,opening_fundee,funding_txid,zcore_txid,
 msgdata,opening_fundee,funding_txout,u16,
 msgdata,opening_fundee,funding_satoshis,amount_sat,
 msgdata,opening_fundee,push_msat,amount_msat,

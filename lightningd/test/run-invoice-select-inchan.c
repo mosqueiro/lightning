@@ -12,14 +12,14 @@ size_t bigsize_get(const u8 *p UNNEEDED, size_t max UNNEEDED, bigsize_t *val UNN
 /* Generated stub for bigsize_put */
 size_t bigsize_put(u8 buf[BIGSIZE_MAX_LEN] UNNEEDED, bigsize_t v UNNEEDED)
 { fprintf(stderr, "bigsize_put called!\n"); abort(); }
-/* Generated stub for bitcoind_gettxout */
-void bitcoind_gettxout(struct bitcoind *bitcoind UNNEEDED,
-		       const struct bitcoin_txid *txid UNNEEDED, const u32 outnum UNNEEDED,
-		       void (*cb)(struct bitcoind *bitcoind UNNEEDED,
-				  const struct bitcoin_tx_output *txout UNNEEDED,
+/* Generated stub for zcored_gettxout */
+void zcored_gettxout(struct zcored *zcored UNNEEDED,
+		       const struct zcore_txid *txid UNNEEDED, const u32 outnum UNNEEDED,
+		       void (*cb)(struct zcored *zcored UNNEEDED,
+				  const struct zcore_tx_output *txout UNNEEDED,
 				  void *arg) UNNEEDED,
 		       void *arg UNNEEDED)
-{ fprintf(stderr, "bitcoind_gettxout called!\n"); abort(); }
+{ fprintf(stderr, "zcored_gettxout called!\n"); abort(); }
 /* Generated stub for bolt11_decode */
 struct bolt11 *bolt11_decode(const tal_t *ctx UNNEEDED, const char *str UNNEEDED,
 			     const char *description UNNEEDED, char **fail UNNEEDED)
@@ -35,7 +35,7 @@ char *bolt11_encode_(const tal_t *ctx UNNEEDED,
 { fprintf(stderr, "bolt11_encode_ called!\n"); abort(); }
 /* Generated stub for broadcast_tx */
 void broadcast_tx(struct chain_topology *topo UNNEEDED,
-		  struct channel *channel UNNEEDED, const struct bitcoin_tx *tx UNNEEDED,
+		  struct channel *channel UNNEEDED, const struct zcore_tx *tx UNNEEDED,
 		  void (*failed)(struct channel *channel UNNEEDED,
 				 int exitstatus UNNEEDED,
 				 const char *err))
@@ -43,7 +43,7 @@ void broadcast_tx(struct chain_topology *topo UNNEEDED,
 /* Generated stub for channel_tell_depth */
 bool channel_tell_depth(struct lightningd *ld UNNEEDED,
 				 struct channel *channel UNNEEDED,
-				 const struct bitcoin_txid *txid UNNEEDED,
+				 const struct zcore_txid *txid UNNEEDED,
 				 u32 depth UNNEEDED)
 { fprintf(stderr, "channel_tell_depth called!\n"); abort(); }
 /* Generated stub for command_check_only */
@@ -101,7 +101,7 @@ bool fromwire_gossip_get_incoming_channels_reply(const tal_t *ctx UNNEEDED, cons
 bool fromwire_hsm_get_channel_basepoints_reply(const void *p UNNEEDED, struct basepoints *basepoints UNNEEDED, struct pubkey *funding_pubkey UNNEEDED)
 { fprintf(stderr, "fromwire_hsm_get_channel_basepoints_reply called!\n"); abort(); }
 /* Generated stub for fromwire_hsm_sign_commitment_tx_reply */
-bool fromwire_hsm_sign_commitment_tx_reply(const void *p UNNEEDED, struct bitcoin_signature *sig UNNEEDED)
+bool fromwire_hsm_sign_commitment_tx_reply(const void *p UNNEEDED, struct zcore_signature *sig UNNEEDED)
 { fprintf(stderr, "fromwire_hsm_sign_commitment_tx_reply called!\n"); abort(); }
 /* Generated stub for fromwire_hsm_sign_invoice_reply */
 bool fromwire_hsm_sign_invoice_reply(const void *p UNNEEDED, secp256k1_ecdsa_recoverable_signature *sig UNNEEDED)
@@ -202,11 +202,11 @@ void json_add_string(struct json_stream *result UNNEEDED, const char *fieldname 
 /* Generated stub for json_add_tx */
 void json_add_tx(struct json_stream *result UNNEEDED,
 		 const char *fieldname UNNEEDED,
-		 const struct bitcoin_tx *tx UNNEEDED)
+		 const struct zcore_tx *tx UNNEEDED)
 { fprintf(stderr, "json_add_tx called!\n"); abort(); }
 /* Generated stub for json_add_txid */
 void json_add_txid(struct json_stream *result UNNEEDED, const char *fieldname UNNEEDED,
-		   const struct bitcoin_txid *txid UNNEEDED)
+		   const struct zcore_txid *txid UNNEEDED)
 { fprintf(stderr, "json_add_txid called!\n"); abort(); }
 /* Generated stub for json_add_u64 */
 void json_add_u64(struct json_stream *result UNNEEDED, const char *fieldname UNNEEDED,
@@ -305,7 +305,7 @@ void notify_invoice_payment(struct lightningd *ld UNNEEDED, struct amount_msat a
 { fprintf(stderr, "notify_invoice_payment called!\n"); abort(); }
 /* Generated stub for onchaind_funding_spent */
 enum watch_result onchaind_funding_spent(struct channel *channel UNNEEDED,
-					 const struct bitcoin_tx *tx UNNEEDED,
+					 const struct zcore_tx *tx UNNEEDED,
 					 u32 blockheight UNNEEDED)
 { fprintf(stderr, "onchaind_funding_spent called!\n"); abort(); }
 /* Generated stub for param */
@@ -317,13 +317,13 @@ struct command_result *param_array(struct command *cmd UNNEEDED, const char *nam
 				   const char *buffer UNNEEDED, const jsmntok_t *tok UNNEEDED,
 				   const jsmntok_t **arr UNNEEDED)
 { fprintf(stderr, "param_array called!\n"); abort(); }
-/* Generated stub for param_bitcoin_address */
-struct command_result *param_bitcoin_address(struct command *cmd UNNEEDED,
+/* Generated stub for param_zcore_address */
+struct command_result *param_zcore_address(struct command *cmd UNNEEDED,
 					     const char *name UNNEEDED,
 					     const char *buffer UNNEEDED,
 					     const jsmntok_t *tok UNNEEDED,
 					     const u8 **scriptpubkey UNNEEDED)
-{ fprintf(stderr, "param_bitcoin_address called!\n"); abort(); }
+{ fprintf(stderr, "param_zcore_address called!\n"); abort(); }
 /* Generated stub for param_bool */
 struct command_result *param_bool(struct command *cmd UNNEEDED, const char *name UNNEEDED,
 				  const char *buffer UNNEEDED, const jsmntok_t *tok UNNEEDED,
@@ -477,7 +477,7 @@ u8 *towire_gossip_get_incoming_channels(const tal_t *ctx UNNEEDED, bool *private
 u8 *towire_hsm_get_channel_basepoints(const tal_t *ctx UNNEEDED, const struct node_id *peerid UNNEEDED, u64 dbid UNNEEDED)
 { fprintf(stderr, "towire_hsm_get_channel_basepoints called!\n"); abort(); }
 /* Generated stub for towire_hsm_sign_commitment_tx */
-u8 *towire_hsm_sign_commitment_tx(const tal_t *ctx UNNEEDED, const struct node_id *peer_id UNNEEDED, u64 channel_dbid UNNEEDED, const struct bitcoin_tx *tx UNNEEDED, const struct pubkey *remote_funding_key UNNEEDED, struct amount_sat funding_amount UNNEEDED)
+u8 *towire_hsm_sign_commitment_tx(const tal_t *ctx UNNEEDED, const struct node_id *peer_id UNNEEDED, u64 channel_dbid UNNEEDED, const struct zcore_tx *tx UNNEEDED, const struct pubkey *remote_funding_key UNNEEDED, struct amount_sat funding_amount UNNEEDED)
 { fprintf(stderr, "towire_hsm_sign_commitment_tx called!\n"); abort(); }
 /* Generated stub for towire_hsm_sign_invoice */
 u8 *towire_hsm_sign_invoice(const tal_t *ctx UNNEEDED, const u8 *u5bytes UNNEEDED, const u8 *hrp UNNEEDED)
@@ -492,7 +492,7 @@ void txfilter_add_scriptpubkey(struct txfilter *filter UNNEEDED, const u8 *scrip
 const char *version(void)
 { fprintf(stderr, "version called!\n"); abort(); }
 /* Generated stub for wallet_annotate_txout */
-void wallet_annotate_txout(struct wallet *w UNNEEDED, const struct bitcoin_txid *txid UNNEEDED,
+void wallet_annotate_txout(struct wallet *w UNNEEDED, const struct zcore_txid *txid UNNEEDED,
 			   int outnum UNNEEDED, enum wallet_tx_type type UNNEEDED, u64 channel UNNEEDED)
 { fprintf(stderr, "wallet_annotate_txout called!\n"); abort(); }
 /* Generated stub for wallet_channel_close */
@@ -506,7 +506,7 @@ void wallet_channel_stats_load(struct wallet *w UNNEEDED, u64 cdbid UNNEEDED, st
 { fprintf(stderr, "wallet_channel_stats_load called!\n"); abort(); }
 /* Generated stub for wallet_channeltxs_add */
 void wallet_channeltxs_add(struct wallet *w UNNEEDED, struct channel *chan UNNEEDED,
-			    const int type UNNEEDED, const struct bitcoin_txid *txid UNNEEDED,
+			    const int type UNNEEDED, const struct zcore_txid *txid UNNEEDED,
 			   const u32 input_num UNNEEDED, const u32 blockheight UNNEEDED)
 { fprintf(stderr, "wallet_channeltxs_add called!\n"); abort(); }
 /* Generated stub for wallet_htlcs_load_for_channel */
@@ -592,37 +592,37 @@ void wallet_peer_delete(struct wallet *w UNNEEDED, u64 peer_dbid UNNEEDED)
 struct amount_msat wallet_total_forward_fees(struct wallet *w UNNEEDED)
 { fprintf(stderr, "wallet_total_forward_fees called!\n"); abort(); }
 /* Generated stub for wallet_transaction_add */
-void wallet_transaction_add(struct wallet *w UNNEEDED, const struct bitcoin_tx *tx UNNEEDED,
+void wallet_transaction_add(struct wallet *w UNNEEDED, const struct zcore_tx *tx UNNEEDED,
 			    const u32 blockheight UNNEEDED, const u32 txindex UNNEEDED)
 { fprintf(stderr, "wallet_transaction_add called!\n"); abort(); }
 /* Generated stub for wallet_transaction_annotate */
 void wallet_transaction_annotate(struct wallet *w UNNEEDED,
-				 const struct bitcoin_txid *txid UNNEEDED,
+				 const struct zcore_txid *txid UNNEEDED,
 				 enum wallet_tx_type type UNNEEDED, u64 channel_id UNNEEDED)
 { fprintf(stderr, "wallet_transaction_annotate called!\n"); abort(); }
 /* Generated stub for wallet_transaction_locate */
 struct txlocator *wallet_transaction_locate(const tal_t *ctx UNNEEDED, struct wallet *w UNNEEDED,
-					    const struct bitcoin_txid *txid UNNEEDED)
+					    const struct zcore_txid *txid UNNEEDED)
 { fprintf(stderr, "wallet_transaction_locate called!\n"); abort(); }
 /* Generated stub for watch_txid */
 struct txwatch *watch_txid(const tal_t *ctx UNNEEDED,
 			   struct chain_topology *topo UNNEEDED,
 			   struct channel *channel UNNEEDED,
-			   const struct bitcoin_txid *txid UNNEEDED,
+			   const struct zcore_txid *txid UNNEEDED,
 			   enum watch_result (*cb)(struct lightningd *ld UNNEEDED,
 						   struct channel *channel UNNEEDED,
-						   const struct bitcoin_txid * UNNEEDED,
-						   const struct bitcoin_tx * UNNEEDED,
+						   const struct zcore_txid * UNNEEDED,
+						   const struct zcore_tx * UNNEEDED,
 						   unsigned int depth))
 { fprintf(stderr, "watch_txid called!\n"); abort(); }
 /* Generated stub for watch_txo */
 struct txowatch *watch_txo(const tal_t *ctx UNNEEDED,
 			   struct chain_topology *topo UNNEEDED,
 			   struct channel *channel UNNEEDED,
-			   const struct bitcoin_txid *txid UNNEEDED,
+			   const struct zcore_txid *txid UNNEEDED,
 			   unsigned int output UNNEEDED,
 			   enum watch_result (*cb)(struct channel *channel UNNEEDED,
-						   const struct bitcoin_tx *tx UNNEEDED,
+						   const struct zcore_tx *tx UNNEEDED,
 						   size_t input_num UNNEEDED,
 						   const struct block *block))
 { fprintf(stderr, "watch_txo called!\n"); abort(); }

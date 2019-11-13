@@ -1,4 +1,4 @@
-# Note that these actually #include everything they need, except ccan/ and bitcoin/.
+# Note that these actually #include everything they need, except ccan/ and zcore/.
 # That allows for unit testing of statics, and special effects.
 CHANNELD_TEST_SRC := $(wildcard channeld/test/run-*.c)
 CHANNELD_TEST_OBJS := $(CHANNELD_TEST_SRC:.c=.o)
@@ -23,7 +23,7 @@ CHANNELD_TEST_COMMON_OBJS :=			\
 
 update-mocks: $(CHANNELD_TEST_SRC:%=update-mocks/%)
 
-$(CHANNELD_TEST_PROGRAMS): $(CCAN_OBJS) $(BITCOIN_OBJS) $(WIRE_OBJS) $(CHANNELD_TEST_COMMON_OBJS)
+$(CHANNELD_TEST_PROGRAMS): $(CCAN_OBJS) $(ZCORE_OBJS) $(WIRE_OBJS) $(CHANNELD_TEST_COMMON_OBJS)
 
 $(CHANNELD_TEST_OBJS): $(LIGHTNING_CHANNELD_HEADERS) $(LIGHTNING_CHANNELD_SRC)
 

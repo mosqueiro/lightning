@@ -1,5 +1,5 @@
-#include <bitcoin/feerate.h>
-#include <bitcoin/script.h>
+#include <zcore/feerate.h>
+#include <zcore/script.h>
 #include <common/key_derive.h>
 #include <errno.h>
 #include <hsmd/gen_hsm_wire.h>
@@ -65,7 +65,7 @@ static void handle_onchain_init_reply(struct channel *channel, const u8 *msg UNU
  * Notify onchaind about the depth change of the watched tx.
  */
 static void onchain_tx_depth(struct channel *channel,
-			     const struct bitcoin_txid *txid,
+			     const struct zcore_txid *txid,
 			     unsigned int depth)
 {
 	u8 *msg;
@@ -78,23 +78,23 @@ static void onchain_tx_depth(struct channel *channel,
  */
 static enum watch_result onchain_tx_watched(struct lightningd *ld,
 					    struct channel *channel,
-					    const struct bitcoin_txid *txid,
-					    const struct bitcoin_tx *tx,
+					    const struct zcore_txid *txid,
+					    const struct zcore_tx *tx,
 					    unsigned int depth)
 {
 	u32 blockheight = get_block_height(ld->topology);
 
 	if (tx != NULL) {
-		struct bitcoin_txid txid2;
+		struct zcore_txid txid2;
 
-		bitcoin_txid(tx, &txid2);
-		if (!bitcoin_txid_eq(txid, &txid2)) {
+		zcore_txid(tx, &txid2);
+		if (!zcore_txid_eq(txid, &txid2)) {
 			channel_internal_error(channel, "Txid for %s is not %s",
 					       type_to_string(tmpctx,
-							      struct bitcoin_tx,
+							      struct zcore_tx,
 							      tx),
 					       type_to_string(tmpctx,
-							      struct bitcoin_txid,
+							      struct zcore_txid,
 							      txid));
 			return DELETE_WATCH;
 		}
@@ -117,12 +117,12 @@ static enum watch_result onchain_tx_watched(struct lightningd *ld,
 }
 
 static void watch_tx_and_outputs(struct channel *channel,
-				 const struct bitcoin_tx *tx);
+				 const struct zcore_tx *tx);
 
 /**
  * Notify onchaind that an output was spent and register new watches.
  */
-static void onchain_txo_spent(struct channel *channel, const struct bitcoin_tx *tx, size_t input_num, u32 blockheight)
+static void onchain_txo_spent(struct channel *channel, const struct zcore_tx *tx, size_t input_num, u32 blockheight)
 {
 	u8 *msg;
 
@@ -137,12 +137,12 @@ static void onchain_txo_spent(struct channel *channel, const struct bitcoin_tx *
  * Entrypoint for the txowatch callback, stores tx and calls onchain_txo_spent.
  */
 static enum watch_result onchain_txo_watched(struct channel *channel,
-					     const struct bitcoin_tx *tx,
+					     const struct zcore_tx *tx,
 					     size_t input_num,
 					     const struct block *block)
 {
-	struct bitcoin_txid txid;
-	bitcoin_txid(tx, &txid);
+	struct zcore_txid txid;
+	zcore_txid(tx, &txid);
 
 	/* Store the channeltx so we can replay later */
 	wallet_channeltxs_add(channel->peer->ld->wallet, channel,
@@ -159,13 +159,13 @@ static enum watch_result onchain_txo_watched(struct channel *channel,
 
 /* To avoid races, we watch the tx and all outputs. */
 static void watch_tx_and_outputs(struct channel *channel,
-				 const struct bitcoin_tx *tx)
+				 const struct zcore_tx *tx)
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	struct txwatch *txw;
 	struct lightningd *ld = channel->peer->ld;
 
-	bitcoin_txid(tx, &txid);
+	zcore_txid(tx, &txid);
 
 	/* Make txwatch a parent of txo watches, so we can unwatch together. */
 	txw = watch_tx(channel->owner, ld->topology, channel, tx,
@@ -178,9 +178,9 @@ static void watch_tx_and_outputs(struct channel *channel,
 
 static void handle_onchain_broadcast_tx(struct channel *channel, const u8 *msg)
 {
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	struct wallet *w = channel->peer->ld->wallet;
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	enum wallet_tx_type type;
 
 	if (!fromwire_onchain_broadcast_tx(msg, msg, &tx, &type)) {
@@ -189,7 +189,7 @@ static void handle_onchain_broadcast_tx(struct channel *channel, const u8 *msg)
 	}
 	tx->chainparams = get_chainparams(channel->peer->ld);
 
-	bitcoin_txid(tx, &txid);
+	zcore_txid(tx, &txid);
 	wallet_transaction_add(w, tx, 0, 0);
 	wallet_transaction_annotate(w, &txid, type, channel->dbid);
 
@@ -199,7 +199,7 @@ static void handle_onchain_broadcast_tx(struct channel *channel, const u8 *msg)
 
 static void handle_onchain_unwatch_tx(struct channel *channel, const u8 *msg)
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	struct txwatch *txw;
 
 	if (!fromwire_onchain_unwatch_tx(msg, &txid)) {
@@ -211,7 +211,7 @@ static void handle_onchain_unwatch_tx(struct channel *channel, const u8 *msg)
 	txw = find_txwatch(channel->peer->ld->topology, &txid, channel);
 	if (!txw)
 		log_unusual(channel->log, "Can't unwatch txid %s",
-			    type_to_string(tmpctx, struct bitcoin_txid, &txid));
+			    type_to_string(tmpctx, struct zcore_txid, &txid));
 	tal_free(txw);
 }
 
@@ -308,7 +308,7 @@ static void onchain_add_utxo(struct channel *channel, const u8 *msg)
 
 static void onchain_annotate_txout(struct channel *channel, const u8 *msg)
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	enum wallet_tx_type type;
 	u32 outnum;
 	if (!fromwire_onchain_annotate_txout(msg, &txid, &outnum, &type))
@@ -321,7 +321,7 @@ static void onchain_annotate_txout(struct channel *channel, const u8 *msg)
 
 static void onchain_annotate_txin(struct channel *channel, const u8 *msg)
 {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	enum wallet_tx_type type;
 	u32 innum;
 	if (!fromwire_onchain_annotate_txin(msg, &txid, &innum, &type))
@@ -447,11 +447,11 @@ static void onchain_error(struct channel *channel,
 /* With a reorg, this can get called multiple times; each time we'll kill
  * onchaind (like any other owner), and restart */
 enum watch_result onchaind_funding_spent(struct channel *channel,
-					 const struct bitcoin_tx *tx,
+					 const struct zcore_tx *tx,
 					 u32 blockheight)
 {
 	u8 *msg;
-	struct bitcoin_txid our_last_txid, txid;
+	struct zcore_txid our_last_txid, txid;
 	struct htlc_stub *stubs;
 	struct lightningd *ld = channel->peer->ld;
 	struct pubkey final_key;
@@ -499,8 +499,8 @@ enum watch_result onchaind_funding_spent(struct channel *channel,
 		return KEEP_WATCHING;
 	}
 	/* This could be a mutual close, but it doesn't matter. */
-	bitcoin_txid(tx, &txid);
-	bitcoin_txid(channel->last_tx, &our_last_txid);
+	zcore_txid(tx, &txid);
+	zcore_txid(channel->last_tx, &our_last_txid);
 
 	/* We try to use normal feerate for onchaind spends. */
 	feerate = try_get_feerate(ld->topology, FEERATE_NORMAL);
@@ -509,7 +509,7 @@ enum watch_result onchaind_funding_spent(struct channel *channel,
 		struct amount_sat fee = channel->funding;
 		for (size_t i = 0; i < channel->last_tx->wtx->num_outputs; i++) {
 			struct amount_asset asset =
-			    bitcoin_tx_output_get_amount(channel->last_tx, i);
+			    zcore_tx_output_get_amount(channel->last_tx, i);
 			struct amount_sat amt;
 			assert(amount_asset_is_main(&asset));
 			amt = amount_asset_to_sat(&asset);
@@ -520,13 +520,13 @@ enum watch_result onchaind_funding_spent(struct channel *channel,
 							  struct amount_sat,
 							  &channel->funding),
 					   type_to_string(tmpctx,
-							  struct bitcoin_tx,
+							  struct zcore_tx,
 							  channel->last_tx));
 				return KEEP_WATCHING;
 			}
 		}
 
-		feerate = fee.satoshis / bitcoin_tx_weight(tx); /* Raw: reverse feerate extraction */
+		feerate = fee.satoshis / zcore_tx_weight(tx); /* Raw: reverse feerate extraction */
 		if (feerate < feerate_floor())
 			feerate = feerate_floor();
 	}

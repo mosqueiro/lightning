@@ -6,7 +6,7 @@
 # Begin!  (passes gossipd-client fd)
 msgtype,channel_init,1000
 msgdata,channel_init,chainparams,chainparams,
-msgdata,channel_init,funding_txid,bitcoin_txid,
+msgdata,channel_init,funding_txid,zcore_txid,
 msgdata,channel_init,funding_txout,u16,
 msgdata,channel_init,funding_satoshi,amount_sat,
 msgdata,channel_init,minimum_depth,u32,
@@ -16,7 +16,7 @@ msgdata,channel_init,their_config,channel_config,
 msgdata,channel_init,feerate_per_kw,u32,2
 msgdata,channel_init,feerate_min,u32,
 msgdata,channel_init,feerate_max,u32,
-msgdata,channel_init,first_commit_sig,bitcoin_signature,
+msgdata,channel_init,first_commit_sig,zcore_signature,
 msgdata,channel_init,per_peer_state,per_peer_state,
 msgdata,channel_init,remote_fundingkey,pubkey,
 msgdata,channel_init,remote_basepoints,basepoints,
@@ -67,7 +67,7 @@ msgdata,channel_init,localfeatures,u8,lflen
 msgdata,channel_init,upfront_shutdown_script_len,u16,
 msgdata,channel_init,upfront_shutdown_script,u8,upfront_shutdown_script_len
 msgdata,channel_init,remote_ann_node_sig,?secp256k1_ecdsa_signature,
-msgdata,channel_init,remote_ann_bitcoin_sig,?secp256k1_ecdsa_signature,
+msgdata,channel_init,remote_ann_zcore_sig,?secp256k1_ecdsa_signature,
 msgdata,channel_init,option_static_remotekey,bool,
 msgdata,channel_init,dev_fast_gossip,bool,
 
@@ -92,7 +92,7 @@ msgdata,channel_offer_htlc_reply,failurestrlen,u16,
 msgdata,channel_offer_htlc_reply,failurestr,u8,failurestrlen
 
 # Main daemon found out the preimage for an HTLC
-#include <bitcoin/preimage.h>
+#include <zcore/preimage.h>
 msgtype,channel_fulfill_htlc,1005
 msgdata,channel_fulfill_htlc,fulfilled_htlc,fulfilled_htlc,
 
@@ -112,7 +112,7 @@ msgdata,channel_sending_commitsig,feerate,u32,
 # SENT_ADD_COMMIT, SENT_REMOVE_ACK_COMMIT, SENT_ADD_ACK_COMMIT, SENT_REMOVE_COMMIT
 msgdata,channel_sending_commitsig,num_changed,u16,
 msgdata,channel_sending_commitsig,changed,changed_htlc,num_changed
-msgdata,channel_sending_commitsig,commit_sig,bitcoin_signature,
+msgdata,channel_sending_commitsig,commit_sig,zcore_signature,
 msgdata,channel_sending_commitsig,num_htlc_sigs,u16,
 msgdata,channel_sending_commitsig,htlc_sigs,secp256k1_ecdsa_signature,num_htlc_sigs
 
@@ -123,7 +123,7 @@ msgtype,channel_sending_commitsig_reply,1120
 msgtype,channel_got_commitsig,1021
 msgdata,channel_got_commitsig,commitnum,u64,
 msgdata,channel_got_commitsig,feerate,u32,
-msgdata,channel_got_commitsig,signature,bitcoin_signature,
+msgdata,channel_got_commitsig,signature,zcore_signature,
 msgdata,channel_got_commitsig,num_htlcs,u16,
 msgdata,channel_got_commitsig,htlc_signature,secp256k1_ecdsa_signature,num_htlcs
 # RCVD_ADD_COMMIT: we're now committed to their new offered HTLCs.
@@ -138,7 +138,7 @@ msgdata,channel_got_commitsig,failed,failed_htlc,num_failed
 # RCVD_ADD_ACK_COMMIT, RCVD_REMOVE_ACK_COMMIT
 msgdata,channel_got_commitsig,num_changed,u16,
 msgdata,channel_got_commitsig,changed,changed_htlc,num_changed
-msgdata,channel_got_commitsig,tx,bitcoin_tx,
+msgdata,channel_got_commitsig,tx,zcore_tx,
 
 # Wait for reply, to make sure it's on disk before we send revocation.
 msgtype,channel_got_commitsig_reply,1121
@@ -199,7 +199,7 @@ msgdata,channel_specific_feerates,feerate_ppm,u32,
 # When we receive announcement_signatures for channel announce
 msgtype,channel_got_announcement,1017
 msgdata,channel_got_announcement,remote_ann_node_sig,secp256k1_ecdsa_signature,
-msgdata,channel_got_announcement,remote_ann_bitcoin_sig,secp256k1_ecdsa_signature,
+msgdata,channel_got_announcement,remote_ann_zcore_sig,secp256k1_ecdsa_signature,
 
 # Ask channeld to send a error message. Used in forgetting channel case.
 msgtype,channel_send_error,1008

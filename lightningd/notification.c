@@ -143,7 +143,7 @@ void notify_invoice_payment(struct lightningd *ld, struct amount_msat amount,
 static void channel_opened_notification_serialize(struct json_stream *stream,
 						  struct node_id *node_id,
 						  struct amount_sat *funding_sat,
-						  struct bitcoin_txid *funding_txid,
+						  struct zcore_txid *funding_txid,
 						  bool *funding_locked)
 {
 	json_object_start(stream, "channel_opened");
@@ -158,13 +158,13 @@ REGISTER_NOTIFICATION(channel_opened,
 		      channel_opened_notification_serialize)
 
 void notify_channel_opened(struct lightningd *ld, struct node_id *node_id,
-			   struct amount_sat *funding_sat, struct bitcoin_txid *funding_txid,
+			   struct amount_sat *funding_sat, struct zcore_txid *funding_txid,
 			   bool *funding_locked)
 {
 	void (*serialize)(struct json_stream *,
 			  struct node_id *,
 			  struct amount_sat *,
-			  struct bitcoin_txid *,
+			  struct zcore_txid *,
 			  bool *) = channel_opened_notification_gen.serialize;
 
 	struct jsonrpc_notification *n

@@ -1,6 +1,6 @@
-#include "bitcoin/feerate.h"
-#include <bitcoin/privkey.h>
-#include <bitcoin/script.h>
+#include "zcore/feerate.h"
+#include <zcore/privkey.h>
+#include <zcore/script.h>
 #include <ccan/tal/str/str.h>
 #include <common/addr.h>
 #include <common/channel_config.h>
@@ -157,9 +157,9 @@ void json_add_uncommitted_channel(struct json_stream *response,
 static struct channel *
 wallet_commit_channel(struct lightningd *ld,
 		      struct uncommitted_channel *uc,
-		      struct bitcoin_tx *remote_commit,
-		      struct bitcoin_signature *remote_commit_sig,
-		      const struct bitcoin_txid *funding_txid,
+		      struct zcore_tx *remote_commit,
+		      struct zcore_signature *remote_commit_sig,
+		      const struct zcore_txid *funding_txid,
 		      u16 funding_outnum,
 		      struct amount_sat funding,
 		      struct amount_msat push,
@@ -357,10 +357,10 @@ static void opening_funder_finished(struct subd *openingd, const u8 *resp,
 				    struct funding_channel *fc)
 {
 	struct channel_info channel_info;
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	u16 funding_txout;
-	struct bitcoin_signature remote_commit_sig;
-	struct bitcoin_tx *remote_commit;
+	struct zcore_signature remote_commit_sig;
+	struct zcore_tx *remote_commit;
 	u32 feerate;
 	struct channel *channel;
 	struct lightningd *ld = openingd->ld;
@@ -444,10 +444,10 @@ static void opening_fundee_finished(struct subd *openingd,
 {
 	u8 *funding_signed;
 	struct channel_info channel_info;
-	struct bitcoin_signature remote_commit_sig;
-	struct bitcoin_tx *remote_commit;
+	struct zcore_signature remote_commit_sig;
+	struct zcore_tx *remote_commit;
 	struct lightningd *ld = openingd->ld;
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	u16 funding_outnum;
 	struct amount_sat funding;
 	struct amount_msat push;
@@ -517,7 +517,7 @@ static void opening_fundee_finished(struct subd *openingd,
 	}
 
 	log_debug(channel->log, "Watching funding tx %s",
-		  type_to_string(reply, struct bitcoin_txid,
+		  type_to_string(reply, struct zcore_txid,
 				 &channel->funding_txid));
 
 	channel_watch_funding(ld, channel);
@@ -676,7 +676,7 @@ static void channel_config(struct lightningd *ld,
 	 * The sending node SHOULD:
 	 *...
 	 *   - set `dust_limit_satoshis` to a sufficient value to allow
-	 *     commitment transactions to propagate through the Bitcoin network.
+	 *     commitment transactions to propagate through the ZCore network.
 	 */
 	ours->dust_limit = get_chainparams(ld)->dust_limit;
 	ours->max_htlc_value_in_flight = AMOUNT_MSAT(UINT64_MAX);
@@ -976,7 +976,7 @@ static struct command_result *json_fund_channel_complete(struct command *cmd,
 {
 	u8 *msg;
 	struct node_id *id;
-	struct bitcoin_txid *funding_txid;
+	struct zcore_txid *funding_txid;
 	struct peer *peer;
 	struct channel *channel;
 	u32 *funding_txout_num;
@@ -1092,7 +1092,7 @@ static struct command_result *json_fund_channel_start(struct command *cmd,
 			   p_req("amount", param_sat, &amount),
 			   p_opt("feerate", param_feerate, &feerate_per_kw),
 			   p_opt_def("announce", param_bool, &announce_channel, true),
-			   p_opt("close_to", param_bitcoin_address, &fc->our_upfront_shutdown_script),
+			   p_opt("close_to", param_zcore_address, &fc->our_upfront_shutdown_script),
 			   NULL))
 			return command_param_failed();
 	} else {
@@ -1143,8 +1143,8 @@ static struct command_result *json_fund_channel_start(struct command *cmd,
 	}
 
 	if (!topology_synced(cmd->ld->topology)) {
-		return command_fail(cmd, FUNDING_STILL_SYNCING_BITCOIN,
-				    "Still syncing with bitcoin network");
+		return command_fail(cmd, FUNDING_STILL_SYNCING_ZCORE,
+				    "Still syncing with zcore network");
 	}
 
 	peer = peer_by_id(cmd->ld, id);

@@ -6,11 +6,11 @@
  * which indicates what it's allowed to ask for.  We're entirely driven
  * by request, response.
  */
-#include <bitcoin/address.h>
-#include <bitcoin/privkey.h>
-#include <bitcoin/pubkey.h>
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/address.h>
+#include <zcore/privkey.h>
+#include <zcore/pubkey.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/cast/cast.h>
 #include <ccan/container_of/container_of.h>
@@ -401,10 +401,10 @@ static void populate_secretstuff(void)
 	assert(bip32_key_version.bip32_privkey_version == BIP32_VER_MAIN_PRIVATE
 			|| bip32_key_version.bip32_privkey_version == BIP32_VER_TEST_PRIVATE);
 
-	/* Fill in the BIP32 tree for bitcoin addresses. */
+	/* Fill in the BIP32 tree for zcore addresses. */
 	/* In libwally-core, the version BIP32_VER_TEST_PRIVATE is for testnet/regtest,
 	 * and BIP32_VER_MAIN_PRIVATE is for mainnet. For litecoin, we also set it like
-	 * bitcoin else.*/
+	 * zcore else.*/
 	do {
 		hkdf_sha256(bip32_seed, sizeof(bip32_seed),
 			    &salt, sizeof(salt),
@@ -465,7 +465,7 @@ static void populate_secretstuff(void)
 
 /*~ Get the keys for this given BIP32 index: if privkey is NULL, we
  * don't fill it in. */
-static void bitcoin_key(struct privkey *privkey, struct pubkey *pubkey,
+static void zcore_key(struct privkey *privkey, struct pubkey *pubkey,
 			u32 index)
 {
 	struct ext_key ext;
@@ -765,7 +765,7 @@ static struct io_plan *handle_ecdh(struct io_conn *conn,
 
 /*~ The specific routine to sign the channel_announcement message.  This is
  * defined in BOLT #7, and requires *two* signatures: one from this node's key
- * (to prove it's from us), and one from the bitcoin key used to create the
+ * (to prove it's from us), and one from the zcore key used to create the
  * funding transaction (to prove we own the output). */
 static struct io_plan *handle_cannouncement_sig(struct io_conn *conn,
 						struct client *c,
@@ -789,7 +789,7 @@ static struct io_plan *handle_cannouncement_sig(struct io_conn *conn,
 	/* First type bytes are the msg type */
 	size_t offset = 2 + 256;
 	struct privkey node_pkey;
-	secp256k1_ecdsa_signature node_sig, bitcoin_sig;
+	secp256k1_ecdsa_signature node_sig, zcore_sig;
 	struct sha256_double hash;
 	u8 *reply;
 	u8 *ca;
@@ -828,10 +828,10 @@ static struct io_plan *handle_cannouncement_sig(struct io_conn *conn,
 	sha256_double(&hash, ca + offset, tal_count(ca) - offset);
 
 	sign_hash(&node_pkey, &hash, &node_sig);
-	sign_hash(&funding_privkey, &hash, &bitcoin_sig);
+	sign_hash(&funding_privkey, &hash, &zcore_sig);
 
 	reply = towire_hsm_cannouncement_sig_reply(NULL, &node_sig,
-						   &bitcoin_sig);
+						   &zcore_sig);
 	return req_reply(conn, c, take(reply));
 }
 
@@ -856,7 +856,7 @@ static struct io_plan *handle_channel_update_sig(struct io_conn *conn,
 	struct amount_msat htlc_minimum, htlc_maximum;
 	u8 message_flags, channel_flags;
 	u16 cltv_expiry_delta;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	u8 *cu;
 
 	if (!fromwire_hsm_cupdate_sig_req(tmpctx, msg_in, &cu))
@@ -930,8 +930,8 @@ static struct io_plan *handle_sign_commitment_tx(struct io_conn *conn,
 	u64 dbid;
 	struct amount_sat funding;
 	struct secret channel_seed;
-	struct bitcoin_tx *tx;
-	struct bitcoin_signature sig;
+	struct zcore_tx *tx;
+	struct zcore_signature sig;
 	struct secrets secrets;
 	const u8 *funding_wscript;
 
@@ -954,15 +954,15 @@ static struct io_plan *handle_sign_commitment_tx(struct io_conn *conn,
 	derive_basepoints(&channel_seed,
 			  &local_funding_pubkey, NULL, &secrets, NULL);
 
-	/*~ Bitcoin signatures cover the (part of) the script they're
+	/*~ ZCore signatures cover the (part of) the script they're
 	 * executing; the rules are a bit complex in general, but for
 	 * Segregated Witness it's simply the current script. */
-	funding_wscript = bitcoin_redeem_2of2(tmpctx,
+	funding_wscript = zcore_redeem_2of2(tmpctx,
 					      &local_funding_pubkey,
 					      &remote_funding_pubkey);
 	/*~ Segregated Witness also added the input amount to the signing
 	 * algorithm; it's only part of the input implicitly (it's part of the
-	 * output it's spending), so in our 'bitcoin_tx' structure it's a
+	 * output it's spending), so in our 'zcore_tx' structure it's a
 	 * pointer, as we don't always know it (and zero is a valid amount, so
 	 * NULL is better to mean 'unknown' and has the nice property that
 	 * you'll crash if you assume it's there and you're wrong.) */
@@ -992,8 +992,8 @@ static struct io_plan *handle_sign_remote_commitment_tx(struct io_conn *conn,
 	struct pubkey remote_funding_pubkey, local_funding_pubkey;
 	struct amount_sat funding;
 	struct secret channel_seed;
-	struct bitcoin_tx *tx;
-	struct bitcoin_signature sig;
+	struct zcore_tx *tx;
+	struct zcore_signature sig;
 	struct secrets secrets;
 	const u8 *funding_wscript;
 
@@ -1014,7 +1014,7 @@ static struct io_plan *handle_sign_remote_commitment_tx(struct io_conn *conn,
 	derive_basepoints(&channel_seed,
 			  &local_funding_pubkey, NULL, &secrets, NULL);
 
-	funding_wscript = bitcoin_redeem_2of2(tmpctx,
+	funding_wscript = zcore_redeem_2of2(tmpctx,
 					      &local_funding_pubkey,
 					      &remote_funding_pubkey);
 	/* Need input amount for signing */
@@ -1035,8 +1035,8 @@ static struct io_plan *handle_sign_remote_htlc_tx(struct io_conn *conn,
 						  const u8 *msg_in)
 {
 	struct secret channel_seed;
-	struct bitcoin_tx *tx;
-	struct bitcoin_signature sig;
+	struct zcore_tx *tx;
+	struct zcore_signature sig;
 	struct secrets secrets;
 	struct basepoints basepoints;
 	struct pubkey remote_per_commit_point;
@@ -1080,12 +1080,12 @@ static struct io_plan *handle_sign_remote_htlc_tx(struct io_conn *conn,
 static struct io_plan *handle_sign_to_us_tx(struct io_conn *conn,
 					    struct client *c,
 					    const u8 *msg_in,
-					    struct bitcoin_tx *tx,
+					    struct zcore_tx *tx,
 					    const struct privkey *privkey,
 					    const u8 *wscript,
 					    struct amount_sat input_sat)
 {
-	struct bitcoin_signature sig;
+	struct zcore_signature sig;
 	struct pubkey pubkey;
 
 	if (!pubkey_from_privkey(privkey, &pubkey))
@@ -1112,7 +1112,7 @@ static struct io_plan *handle_sign_delayed_payment_to_us(struct io_conn *conn,
 	struct amount_sat input_sat;
 	struct secret channel_seed, basepoint_secret;
 	struct pubkey basepoint;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	struct sha256 shaseed;
 	struct pubkey per_commitment_point;
 	struct privkey privkey;
@@ -1168,7 +1168,7 @@ static struct io_plan *handle_sign_remote_htlc_to_us(struct io_conn *conn,
 	struct amount_sat input_sat;
 	struct secret channel_seed, htlc_basepoint_secret;
 	struct pubkey htlc_basepoint;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	struct pubkey remote_per_commitment_point;
 	struct privkey privkey;
 	u8 *wscript;
@@ -1208,7 +1208,7 @@ static struct io_plan *handle_sign_penalty_to_us(struct io_conn *conn,
 	struct amount_sat input_sat;
 	struct secret channel_seed, revocation_secret, revocation_basepoint_secret;
 	struct pubkey revocation_basepoint;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	struct pubkey point;
 	struct privkey privkey;
 	u8 *wscript;
@@ -1254,9 +1254,9 @@ static struct io_plan *handle_sign_local_htlc_tx(struct io_conn *conn,
 	struct secret channel_seed, htlc_basepoint_secret;
 	struct sha256 shaseed;
 	struct pubkey per_commitment_point, htlc_basepoint;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	u8 *wscript;
-	struct bitcoin_signature sig;
+	struct zcore_signature sig;
 	struct privkey htlc_privkey;
 	struct pubkey htlc_pubkey;
 
@@ -1387,9 +1387,9 @@ static struct io_plan *handle_sign_mutual_close_tx(struct io_conn *conn,
 						   const u8 *msg_in)
 {
 	struct secret channel_seed;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	struct pubkey remote_funding_pubkey, local_funding_pubkey;
-	struct bitcoin_signature sig;
+	struct zcore_signature sig;
 	struct secrets secrets;
 	struct amount_sat funding;
 	const u8 *funding_wscript;
@@ -1408,7 +1408,7 @@ static struct io_plan *handle_sign_mutual_close_tx(struct io_conn *conn,
 	derive_basepoints(&channel_seed,
 			  &local_funding_pubkey, NULL, &secrets, NULL);
 
-	funding_wscript = bitcoin_redeem_2of2(tmpctx,
+	funding_wscript = zcore_redeem_2of2(tmpctx,
 					      &local_funding_pubkey,
 					      &remote_funding_pubkey);
 	/* Need input amount for signing */
@@ -1521,7 +1521,7 @@ static void hsm_unilateral_close_privkey(struct privkey *dst,
 	}
 }
 
-/* This gets the bitcoin private key needed to spend from our wallet. */
+/* This gets the zcore private key needed to spend from our wallet. */
 static void hsm_key_for_utxo(struct privkey *privkey, struct pubkey *pubkey,
 			     const struct utxo *utxo)
 {
@@ -1535,12 +1535,12 @@ static void hsm_key_for_utxo(struct privkey *privkey, struct pubkey *pubkey,
 			     type_to_string(tmpctx, struct pubkey, pubkey));
 	} else {
 		/* Simple case: just get derive via HD-derivation */
-		bitcoin_key(privkey, pubkey, utxo->keyindex);
+		zcore_key(privkey, pubkey, utxo->keyindex);
 	}
 }
 
 /* This completes the tx by filling in the input scripts with signatures. */
-static void sign_all_inputs(struct bitcoin_tx *tx, struct utxo **utxos)
+static void sign_all_inputs(struct zcore_tx *tx, struct utxo **utxos)
 {
 	/*~ Deep in my mind there's a continuous battle: should arrays be
 	 * named as singular or plural?  Is consistency the sign of a weak
@@ -1559,33 +1559,33 @@ static void sign_all_inputs(struct bitcoin_tx *tx, struct utxo **utxos)
 		struct privkey inprivkey;
 		const struct utxo *in = utxos[i];
 		u8 *subscript, *wscript, *script;
-		struct bitcoin_signature sig;
+		struct zcore_signature sig;
 
 		/* Figure out keys to spend this. */
 		hsm_key_for_utxo(&inprivkey, &inkey, in);
 
 		/* It's either a p2wpkh or p2sh (we support that so people from
-		 * the last bitcoin era can put funds into the wallet) */
+		 * the last zcore era can put funds into the wallet) */
 		wscript = p2wpkh_scriptcode(tmpctx, &inkey);
 		if (in->is_p2sh) {
 			/* For P2SH-wrapped Segwit, the (implied) redeemScript
 			 * is defined in BIP141 */
-			subscript = bitcoin_redeem_p2sh_p2wpkh(tmpctx, &inkey);
-			script = bitcoin_scriptsig_p2sh_p2wpkh(tx, &inkey);
-			bitcoin_tx_input_set_script(tx, i, script);
+			subscript = zcore_redeem_p2sh_p2wpkh(tmpctx, &inkey);
+			script = zcore_scriptsig_p2sh_p2wpkh(tx, &inkey);
+			zcore_tx_input_set_script(tx, i, script);
 		} else {
 			/* Pure segwit uses an empty inputScript; NULL has
 			 * tal_count() == 0, so it works great here. */
 			subscript = NULL;
-			bitcoin_tx_input_set_script(tx, i, NULL);
+			zcore_tx_input_set_script(tx, i, NULL);
 		}
 		/* This is the core crypto magic. */
 		sign_tx_input(tx, i, subscript, wscript, &inprivkey, &inkey,
 			      SIGHASH_ALL, &sig);
 
 		/* The witness is [sig] [key] */
-		bitcoin_tx_input_set_witness(
-			tx, i, take(bitcoin_witness_p2wpkh(tx, &sig, &inkey)));
+		zcore_tx_input_set_witness(
+			tx, i, take(zcore_witness_p2wpkh(tx, &sig, &inkey)));
 	}
 }
 
@@ -1599,7 +1599,7 @@ static struct io_plan *handle_sign_funding_tx(struct io_conn *conn,
 	u32 change_keyindex;
 	struct pubkey local_pubkey, remote_pubkey;
 	struct utxo **utxos;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	u16 outnum;
 	struct pubkey *changekey;
 
@@ -1612,7 +1612,7 @@ static struct io_plan *handle_sign_funding_tx(struct io_conn *conn,
 
 	if (amount_sat_greater(change_out, AMOUNT_SAT(0))) {
 		changekey = tal(tmpctx, struct pubkey);
-		bitcoin_key(NULL, changekey, change_keyindex);
+		zcore_key(NULL, changekey, change_keyindex);
 	} else
 		changekey = NULL;
 
@@ -1640,9 +1640,9 @@ static struct io_plan *handle_sign_withdrawal_tx(struct io_conn *conn,
 	struct amount_sat satoshi_out, change_out;
 	u32 change_keyindex;
 	struct utxo **utxos;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	struct pubkey changekey;
-	struct bitcoin_tx_output **outputs;
+	struct zcore_tx_output **outputs;
 
 	if (!fromwire_hsm_sign_withdrawal(tmpctx, msg_in, &satoshi_out,
 					  &change_out, &change_keyindex,

@@ -2,8 +2,8 @@
 #define LIGHTNING_COMMON_SPHINX_H
 
 #include "config.h"
-#include "bitcoin/privkey.h"
-#include "bitcoin/pubkey.h"
+#include "zcore/privkey.h"
+#include "zcore/pubkey.h"
 
 #include <ccan/short_types/short_types.h>
 #include <ccan/tal/tal.h>

@@ -1,7 +1,7 @@
 #include <arpa/inet.h>
-#include <bitcoin/address.h>
-#include <bitcoin/base58.h>
-#include <bitcoin/script.h>
+#include <zcore/address.h>
+#include <zcore/base58.h>
+#include <zcore/script.h>
 #include <ccan/json_escape/json_escape.h>
 #include <ccan/mem/mem.h>
 #include <ccan/str/hex/hex.h>
@@ -74,11 +74,11 @@ void json_add_pubkey(struct json_stream *response,
 }
 
 void json_add_txid(struct json_stream *result, const char *fieldname,
-		   const struct bitcoin_txid *txid)
+		   const struct zcore_txid *txid)
 {
 	char hex[hex_str_size(sizeof(*txid))];
 
-	bitcoin_txid_to_hex(txid, hex, sizeof(hex));
+	zcore_txid_to_hex(txid, hex, sizeof(hex));
 	json_add_string(result, fieldname, hex);
 }
 
@@ -100,9 +100,9 @@ struct command_result *param_txid(struct command *cmd,
 				  const char *name,
 				  const char *buffer,
 				  const jsmntok_t *tok,
-				  struct bitcoin_txid **txid)
+				  struct zcore_txid **txid)
 {
-	*txid = tal(cmd, struct bitcoin_txid);
+	*txid = tal(cmd, struct zcore_txid);
 	if (json_to_txid(buffer, tok, *txid))
 		return NULL;
 	return command_fail(cmd, JSONRPC2_INVALID_PARAMS,
@@ -379,7 +379,7 @@ void json_add_hex_talarr(struct json_stream *result,
 
 void json_add_tx(struct json_stream *result,
 		 const char *fieldname,
-		 const struct bitcoin_tx *tx)
+		 const struct zcore_tx *tx)
 {
 	json_add_hex_talarr(result, fieldname, linearize_tx(tmpctx, tx));
 }
@@ -504,7 +504,7 @@ json_to_address_scriptpubkey(const tal_t *ctx,
 			      const char *buffer,
 			      const jsmntok_t *tok, const u8 **scriptpubkey)
 {
-	struct bitcoin_address destination;
+	struct zcore_address destination;
 	int witness_version;
 	/* segwit_addr_net_decode requires a buffer of size 40, and will
 	 * not write to the buffer if the address is too long, so a buffer
@@ -573,7 +573,7 @@ json_to_address_scriptpubkey(const tal_t *ctx,
 	return ADDRESS_PARSE_UNRECOGNIZED;
 }
 
-struct command_result *param_bitcoin_address(struct command *cmd,
+struct command_result *param_zcore_address(struct command *cmd,
 					     const char *name,
 					     const char *buffer,
 					     const jsmntok_t *tok,

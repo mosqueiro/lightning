@@ -3,8 +3,8 @@
 #define LIGHTNING_COMMON_INITIAL_CHANNEL_H
 #include "config.h"
 
-#include <bitcoin/pubkey.h>
-#include <bitcoin/shadouble.h>
+#include <zcore/pubkey.h>
+#include <zcore/shadouble.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/tal/tal.h>
 #include <common/amount.h>
@@ -29,7 +29,7 @@ struct channel_view {
 
 struct channel {
 	/* Funding txid and output. */
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	unsigned int funding_txout;
 
 	/* Keys used to spend funding tx. */
@@ -91,8 +91,8 @@ struct channel {
  * Returns channel, or NULL if malformed.
  */
 struct channel *new_initial_channel(const tal_t *ctx,
-				    const struct bitcoin_blkid *chain_hash,
-				    const struct bitcoin_txid *funding_txid,
+				    const struct zcore_blkid *chain_hash,
+				    const struct zcore_txid *funding_txid,
 				    unsigned int funding_txout,
 				    u32 minimum_depth,
 				    struct amount_sat funding,
@@ -120,7 +120,7 @@ struct channel *new_initial_channel(const tal_t *ctx,
  * Returns the unsigned initial commitment transaction for @side, or NULL
  * if the channel size was insufficient to cover fees or reserves.
  */
-struct bitcoin_tx *initial_channel_tx(const tal_t *ctx,
+struct zcore_tx *initial_channel_tx(const tal_t *ctx,
 				      const u8 **wscript,
 				      const struct channel *channel,
 				      const struct pubkey *per_commitment_point,

@@ -1,8 +1,8 @@
 #ifndef LIGHTNING_LIGHTNINGD_LIGHTNINGD_H
 #define LIGHTNING_LIGHTNINGD_LIGHTNINGD_H
 #include "config.h"
-#include <bitcoin/chainparams.h>
-#include <bitcoin/privkey.h>
+#include <zcore/chainparams.h>
+#include <zcore/privkey.h>
 #include <ccan/container_of/container_of.h>
 #include <ccan/time/time.h>
 #include <ccan/timer/timer.h>

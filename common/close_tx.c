@@ -1,21 +1,21 @@
-#include "bitcoin/script.h"
-#include "bitcoin/tx.h"
+#include "zcore/script.h"
+#include "zcore/tx.h"
 #include "close_tx.h"
 #include "permute_tx.h"
 #include <assert.h>
 
-struct bitcoin_tx *create_close_tx(const tal_t *ctx,
+struct zcore_tx *create_close_tx(const tal_t *ctx,
 				   const struct chainparams *chainparams,
 				   const u8 *our_script,
 				   const u8 *their_script,
-				   const struct bitcoin_txid *anchor_txid,
+				   const struct zcore_txid *anchor_txid,
 				   unsigned int anchor_index,
 				   struct amount_sat funding,
 				   struct amount_sat to_us,
 				   struct amount_sat to_them,
 				   struct amount_sat dust_limit)
 {
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	size_t num_outputs = 0;
 	struct amount_sat total_out;
 	u8 *script;
@@ -34,17 +34,17 @@ struct bitcoin_tx *create_close_tx(const tal_t *ctx,
 	 * * txin count: 1
 	 */
 	/* Now create close tx: one input, two outputs. */
-	tx = bitcoin_tx(ctx, chainparams, 1, 2);
+	tx = zcore_tx(ctx, chainparams, 1, 2);
 
 	/* Our input spends the anchor tx output. */
-	bitcoin_tx_add_input(tx, anchor_txid, anchor_index,
-			     BITCOIN_TX_DEFAULT_SEQUENCE, funding, NULL);
+	zcore_tx_add_input(tx, anchor_txid, anchor_index,
+			     ZCORE_TX_DEFAULT_SEQUENCE, funding, NULL);
 
 	if (amount_sat_greater_eq(to_us, dust_limit)) {
 		script =
 		    tal_dup_arr(tx, u8, our_script, tal_count(our_script), 0);
 		/* One output is to us. */
-		bitcoin_tx_add_output(tx, script, to_us);
+		zcore_tx_add_output(tx, script, to_us);
 		num_outputs++;
 	}
 
@@ -52,7 +52,7 @@ struct bitcoin_tx *create_close_tx(const tal_t *ctx,
 		script = tal_dup_arr(tx, u8, their_script,
 				     tal_count(their_script), 0);
 		/* Other output is to them. */
-		bitcoin_tx_add_output(tx, script, to_them);
+		zcore_tx_add_output(tx, script, to_them);
 		num_outputs++;
 	}
 
@@ -63,6 +63,6 @@ struct bitcoin_tx *create_close_tx(const tal_t *ctx,
 	permute_outputs(tx, NULL, NULL);
 	elements_tx_add_fee_output(tx);
 
-	assert(bitcoin_tx_check(tx));
+	assert(zcore_tx_check(tx));
 	return tx;
 }

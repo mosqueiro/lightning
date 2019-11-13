@@ -9,14 +9,14 @@
 union printable_types {
 	const struct pubkey *pubkey;
 	const struct node_id *node_id;
-	const struct bitcoin_txid *bitcoin_txid;
-	const struct bitcoin_blkid *bitcoin_blkid;
+	const struct zcore_txid *zcore_txid;
+	const struct zcore_blkid *zcore_blkid;
 	const struct sha256 *sha256;
 	const struct sha256_double *sha256_double;
 	const struct ripemd160 *ripemd160;
 	const struct rel_locktime *rel_locktime;
 	const struct abs_locktime *abs_locktime;
-	const struct bitcoin_tx *bitcoin_tx;
+	const struct zcore_tx *zcore_tx;
 	const struct htlc *htlc;
 	const struct preimage *preimage;
 	const struct channel_oneside *channel_oneside;
@@ -29,7 +29,7 @@ union printable_types {
 	const struct secret *secret;
 	const struct privkey *privkey;
 	const secp256k1_ecdsa_signature *secp256k1_ecdsa_signature;
-	const struct bitcoin_signature *bitcoin_signature;
+	const struct zcore_signature *zcore_signature;
 	const struct channel *channel;
 	const struct amount_msat *amount_msat;
 	const struct amount_sat *amount_sat;

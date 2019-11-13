@@ -23,7 +23,7 @@ commitment transactions.
 
 *announce* whether or not to announce this channel.
 
-*close_to* is a Bitcoin address to which the channel funds should be sent to
+*close_to* is a ZCore address to which the channel funds should be sent to
 on close. Only valid if both peers have negotiated `option_upfront_shutdown_script`.
 Returns `close_to` set to closing script iff is negotiated.
 

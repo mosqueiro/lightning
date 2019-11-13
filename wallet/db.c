@@ -338,7 +338,7 @@ static struct migration dbmigrations[] = {
     /* Record feerate range, to optimize onchaind grinding actual fees. */
     {SQL("ALTER TABLE channels ADD min_possible_feerate INTEGER;"), NULL},
     {SQL("ALTER TABLE channels ADD max_possible_feerate INTEGER;"), NULL},
-    /* https://bitcoinfees.github.io/#1d says Dec 17 peak was ~1M sat/kb
+    /* https://zcorefees.github.io/#1d says Dec 17 peak was ~1M sat/kb
      * which is 250,000 sat/Sipa */
     {SQL("UPDATE channels SET min_possible_feerate=0, "
 	 "max_possible_feerate=250000;"),
@@ -442,7 +442,7 @@ static struct migration dbmigrations[] = {
     {SQL("ALTER TABLE forwarded_payments ADD failcode INTEGER;"), NULL},
     /* remote signatures for channel announcement */
     {SQL("ALTER TABLE channels ADD remote_ann_node_sig BLOB;"), NULL},
-    {SQL("ALTER TABLE channels ADD remote_ann_bitcoin_sig BLOB;"), NULL},
+    {SQL("ALTER TABLE channels ADD remote_ann_zcore_sig BLOB;"), NULL},
     /* Additional information for transaction tracking and listing */
     {SQL("ALTER TABLE transactions ADD type BIGINT;"), NULL},
     /* Not a foreign key on purpose since we still delete channels from
@@ -968,7 +968,7 @@ void db_bind_secret_arr(struct db_stmt *stmt, int col, const struct secret *s)
 	db_bind_blob(stmt, col, ser, tal_count(ser));
 }
 
-void db_bind_txid(struct db_stmt *stmt, int pos, const struct bitcoin_txid *t)
+void db_bind_txid(struct db_stmt *stmt, int pos, const struct zcore_txid *t)
 {
 	db_bind_sha256d(stmt, pos, &t->shad);
 }
@@ -1036,7 +1036,7 @@ void db_bind_timeabs(struct db_stmt *stmt, int col, struct timeabs t)
 	db_bind_u64(stmt, col, timestamp);
 }
 
-void db_bind_tx(struct db_stmt *stmt, int col, const struct bitcoin_tx *tx)
+void db_bind_tx(struct db_stmt *stmt, int col, const struct zcore_tx *tx)
 {
 	u8 *ser = linearize_tx(stmt, tx);
 	assert(ser);
@@ -1150,11 +1150,11 @@ struct timeabs db_column_timeabs(struct db_stmt *stmt, int col)
 
 }
 
-struct bitcoin_tx *db_column_tx(const tal_t *ctx, struct db_stmt *stmt, int col)
+struct zcore_tx *db_column_tx(const tal_t *ctx, struct db_stmt *stmt, int col)
 {
 	const u8 *src = db_column_blob(stmt, col);
 	size_t len = db_column_bytes(stmt, col);
-	return pull_bitcoin_tx(ctx, &src, &len);
+	return pull_zcore_tx(ctx, &src, &len);
 }
 
 void *db_column_arr_(const tal_t *ctx, struct db_stmt *stmt, int col,
@@ -1238,7 +1238,7 @@ struct secret *db_column_secret_arr(const tal_t *ctx, struct db_stmt *stmt,
 	return db_column_arr(ctx, stmt, col, struct secret);
 }
 
-void db_column_txid(struct db_stmt *stmt, int pos, struct bitcoin_txid *t)
+void db_column_txid(struct db_stmt *stmt, int pos, struct zcore_txid *t)
 {
 	db_column_sha256d(stmt, pos, &t->shad);
 }

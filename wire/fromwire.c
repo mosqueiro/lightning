@@ -1,10 +1,10 @@
 #include "wire.h"
 #include <assert.h>
-#include <bitcoin/chainparams.h>
-#include <bitcoin/preimage.h>
-#include <bitcoin/pubkey.h>
-#include <bitcoin/shadouble.h>
-#include <bitcoin/tx.h>
+#include <zcore/chainparams.h>
+#include <zcore/preimage.h>
+#include <zcore/pubkey.h>
+#include <zcore/shadouble.h>
+#include <zcore/tx.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/crypto/siphash24/siphash24.h>
 #include <ccan/endian/endian.h>
@@ -266,14 +266,14 @@ void fromwire_sha256_double(const u8 **cursor, size_t *max,
 	fromwire_sha256(cursor, max, &sha256d->sha);
 }
 
-void fromwire_bitcoin_txid(const u8 **cursor, size_t *max,
-			   struct bitcoin_txid *txid)
+void fromwire_zcore_txid(const u8 **cursor, size_t *max,
+			   struct zcore_txid *txid)
 {
 	fromwire_sha256_double(cursor, max, &txid->shad);
 }
 
-void fromwire_bitcoin_signature(const u8 **cursor, size_t *max,
-				struct bitcoin_signature *sig)
+void fromwire_zcore_signature(const u8 **cursor, size_t *max,
+				struct zcore_signature *sig)
 {
 	fromwire_secp256k1_ecdsa_signature(cursor, max, &sig->s);
 	sig->sighash_type = fromwire_u8(cursor, max);
@@ -281,8 +281,8 @@ void fromwire_bitcoin_signature(const u8 **cursor, size_t *max,
 		fromwire_fail(cursor, max);
 }
 
-void fromwire_bitcoin_blkid(const u8 **cursor, size_t *max,
-			    struct bitcoin_blkid *blkid)
+void fromwire_zcore_blkid(const u8 **cursor, size_t *max,
+			    struct zcore_blkid *blkid)
 {
 	fromwire_sha256_double(cursor, max, &blkid->shad);
 }
@@ -338,7 +338,7 @@ REGISTER_TYPE_TO_HEXSTR(channel_id);
  * (i.e. `funding_output_index` alters the last 2 bytes).
  */
 void derive_channel_id(struct channel_id *channel_id,
-		       const struct bitcoin_txid *txid, u16 txout)
+		       const struct zcore_txid *txid, u16 txout)
 {
 	BUILD_ASSERT(sizeof(*channel_id) == sizeof(*txid));
 	memcpy(channel_id, txid, sizeof(*channel_id));
@@ -346,10 +346,10 @@ void derive_channel_id(struct channel_id *channel_id,
 	channel_id->id[sizeof(*channel_id)-1] ^= txout;
 }
 
-struct bitcoin_tx *fromwire_bitcoin_tx(const tal_t *ctx,
+struct zcore_tx *fromwire_zcore_tx(const tal_t *ctx,
 				       const u8 **cursor, size_t *max)
 {
-	return pull_bitcoin_tx(ctx, cursor, max);
+	return pull_zcore_tx(ctx, cursor, max);
 }
 
 void fromwire_siphash_seed(const u8 **cursor, size_t *max,
@@ -381,10 +381,10 @@ void fromwire_bip32_key_version(const u8** cursor, size_t *max,
 	version->bip32_privkey_version = fromwire_u32(cursor, max);
 }
 
-struct bitcoin_tx_output *fromwire_bitcoin_tx_output(const tal_t *ctx,
+struct zcore_tx_output *fromwire_zcore_tx_output(const tal_t *ctx,
 						     const u8 **cursor, size_t *max)
 {
-	struct bitcoin_tx_output *output = tal(ctx, struct bitcoin_tx_output);
+	struct zcore_tx_output *output = tal(ctx, struct zcore_tx_output);
 	output->amount = fromwire_amount_sat(cursor, max);
 	u16 script_len = fromwire_u16(cursor, max);
 	output->script = tal_arr(output, u8, script_len);
@@ -395,7 +395,7 @@ struct bitcoin_tx_output *fromwire_bitcoin_tx_output(const tal_t *ctx,
 void fromwire_chainparams(const u8 **cursor, size_t *max,
 			  const struct chainparams **chainparams)
 {
-	struct bitcoin_blkid genesis;
-	fromwire_bitcoin_blkid(cursor, max, &genesis);
+	struct zcore_blkid genesis;
+	fromwire_zcore_blkid(cursor, max, &genesis);
 	*chainparams = chainparams_by_chainhash(&genesis);
 }

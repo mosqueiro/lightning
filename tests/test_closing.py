@@ -11,22 +11,22 @@ import threading
 import unittest
 
 
-@unittest.skipIf(not DEVELOPER, "Too slow without --dev-bitcoind-poll")
-def test_closing(node_factory, bitcoind, chainparams):
+@unittest.skipIf(not DEVELOPER, "Too slow without --dev-zcored-poll")
+def test_closing(node_factory, zcored, chainparams):
     l1, l2 = node_factory.line_graph(2)
     chan = l1.get_channel_scid(l2)
     fee = 5430 if not chainparams['elements'] else 8955
 
     l1.pay(l2, 200000000)
 
-    assert bitcoind.rpc.getmempoolinfo()['size'] == 0
+    assert zcored.rpc.getmempoolinfo()['size'] == 0
 
     billboard = only_one(l1.rpc.listpeers(l2.info['id'])['peers'][0]['channels'])['status']
     assert billboard == ['CHANNELD_NORMAL:Funding transaction locked.']
     billboard = only_one(l2.rpc.listpeers(l1.info['id'])['peers'][0]['channels'])['status']
     assert billboard == ['CHANNELD_NORMAL:Funding transaction locked.']
 
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Only wait for the channels to activate with DEVELOPER=1,
     # otherwise it's going to take too long because of the missing
@@ -55,16 +55,16 @@ def test_closing(node_factory, bitcoind, chainparams):
     wait_for(lambda: len(l1.getactivechannels()) == 0)
     wait_for(lambda: len(l2.getactivechannels()) == 0)
 
-    assert bitcoind.rpc.getmempoolinfo()['size'] == 1
+    assert zcored.rpc.getmempoolinfo()['size'] == 1
 
     # Now grab the close transaction
-    closetxid = only_one(bitcoind.rpc.getrawmempool(False))
+    closetxid = only_one(zcored.rpc.getrawmempool(False))
 
     billboard = only_one(l1.rpc.listpeers(l2.info['id'])['peers'][0]['channels'])['status']
     assert billboard == [
         'CLOSINGD_SIGEXCHANGE:We agreed on a closing fee of {} satoshi for tx:{}'.format(fee, closetxid),
     ]
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     l1.daemon.wait_for_log(r'Owning output.* \(SEGWIT\).* txid %s.* CONFIRMED' % closetxid)
     l2.daemon.wait_for_log(r'Owning output.* \(SEGWIT\).* txid %s.* CONFIRMED' % closetxid)
@@ -79,7 +79,7 @@ def test_closing(node_factory, bitcoind, chainparams):
         'ONCHAIN:All outputs resolved: waiting 99 more blocks before forgetting channel'
     ])
 
-    bitcoind.generate_block(9)
+    zcored.generate_block(9)
     wait_for(lambda: only_one(l1.rpc.listpeers(l2.info['id'])['peers'][0]['channels'])['status'] == [
         'CLOSINGD_SIGEXCHANGE:We agreed on a closing fee of {} satoshi for tx:{}'.format(fee, closetxid),
         'ONCHAIN:Tracking mutual close transaction',
@@ -87,7 +87,7 @@ def test_closing(node_factory, bitcoind, chainparams):
     ])
 
     # Make sure both have forgotten about it
-    bitcoind.generate_block(90)
+    zcored.generate_block(90)
     wait_for(lambda: len(l1.rpc.listchannels()['channels']) == 0)
     wait_for(lambda: len(l2.rpc.listchannels()['channels']) == 0)
 
@@ -96,7 +96,7 @@ def test_closing(node_factory, bitcoind, chainparams):
     assert l2.db_query("SELECT count(*) as c FROM channels;")[0]['c'] == 1
 
 
-def test_closing_while_disconnected(node_factory, bitcoind, executor):
+def test_closing_while_disconnected(node_factory, zcored, executor):
     l1, l2 = node_factory.line_graph(2, opts={'may_reconnect': True})
     chan = l1.get_channel_scid(l2)
 
@@ -117,7 +117,7 @@ def test_closing_while_disconnected(node_factory, bitcoind, executor):
     l1.daemon.wait_for_log('sendrawtx exit 0')
     l2.daemon.wait_for_log('sendrawtx exit 0')
 
-    bitcoind.generate_block(101)
+    zcored.generate_block(101)
     wait_for(lambda: len(l1.rpc.listchannels()['channels']) == 0)
     wait_for(lambda: len(l2.rpc.listchannels()['channels']) == 0)
 
@@ -145,7 +145,7 @@ def test_closing_id(node_factory):
     wait_for(lambda: not only_one(l2.rpc.listpeers(l1.info['id'])['peers'])['connected'])
 
 
-def test_closing_torture(node_factory, executor, bitcoind):
+def test_closing_torture(node_factory, executor, zcored):
     # We set up N-to-N fully-connected mesh, then try
     # closing them all at once.
     amount = 10**6
@@ -158,16 +158,16 @@ def test_closing_torture(node_factory, executor, bitcoind):
 
     nodes = node_factory.get_nodes(num_nodes)
 
-    # Make sure bitcoind has plenty of utxos
-    bitcoind.generate_block(num_nodes)
+    # Make sure zcored has plenty of utxos
+    zcored.generate_block(num_nodes)
 
     # Give them all plenty of UTXOs, make sure they see them
     for i in range(len(nodes)):
         for j in range(i + 1, len(nodes)):
             addr = nodes[i].rpc.newaddr()['bech32']
-            bitcoind.rpc.sendtoaddress(addr, (amount + 1000000) / 10**8)
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, nodes)
+            zcored.rpc.sendtoaddress(addr, (amount + 1000000) / 10**8)
+    zcored.generate_block(1)
+    sync_blockheight(zcored, nodes)
 
     txs = []
     for i in range(len(nodes)):
@@ -176,7 +176,7 @@ def test_closing_torture(node_factory, executor, bitcoind):
             txs.append(nodes[i].rpc.fundchannel(nodes[j].info['id'], amount)['txid'])
 
     # Make sure they're all in, then lock them in.
-    bitcoind.generate_block(1, wait_for_mempool=txs)
+    zcored.generate_block(1, wait_for_mempool=txs)
 
     # Wait for them all to be CHANNELD_NORMAL
     for n in nodes:
@@ -201,7 +201,7 @@ def test_closing_torture(node_factory, executor, bitcoind):
     # Should have one close for each open.
     assert len(close_txs) == len(txs)
     # Get closes confirmed
-    bitcoind.generate_block(100, wait_for_mempool=list(close_txs))
+    zcored.generate_block(100, wait_for_mempool=list(close_txs))
 
     # And make sure they hangup.
     for n in nodes:
@@ -209,7 +209,7 @@ def test_closing_torture(node_factory, executor, bitcoind):
 
 
 @unittest.skipIf(SLOW_MACHINE and VALGRIND, "slow test")
-def test_closing_different_fees(node_factory, bitcoind, executor):
+def test_closing_different_fees(node_factory, zcored, executor):
     l1 = node_factory.get_node()
 
     # Default feerate = 15000/7500/1000
@@ -219,9 +219,9 @@ def test_closing_different_fees(node_factory, bitcoind, executor):
     num_peers = len(feerates) * len(amounts)
 
     addr = l1.rpc.newaddr()['bech32']
-    bitcoind.rpc.sendtoaddress(addr, 1)
+    zcored.rpc.sendtoaddress(addr, 1)
     numfunds = len(l1.rpc.listfunds()['outputs'])
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: len(l1.rpc.listfunds()['outputs']) > numfunds)
 
     # Create them in a batch, for speed!
@@ -239,7 +239,7 @@ def test_closing_different_fees(node_factory, bitcoind, executor):
         # Technically, this is async to fundchannel returning.
         l1.daemon.wait_for_log('sendrawtx exit 0')
 
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
 
     # Now wait for them all to hit normal state, do payments
     l1.daemon.wait_for_logs(['update for channel .* now ACTIVE'] * num_peers
@@ -258,9 +258,9 @@ def test_closing_different_fees(node_factory, bitcoind, executor):
     # Note that since they disagree on the ideal fee, they may conflict
     # (first one in will win), so we cannot look at logs, we need to
     # wait for mempool.
-    wait_for(lambda: bitcoind.rpc.getmempoolinfo()['size'] == num_peers)
+    wait_for(lambda: zcored.rpc.getmempoolinfo()['size'] == num_peers)
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     for p in peers:
         p.daemon.wait_for_log(' to ONCHAIN')
         wait_for(lambda: 'ONCHAIN:Tracking mutual close transaction' in only_one(p.rpc.listpeers(l1.info['id'])['peers'][0]['channels'])['status'])
@@ -269,7 +269,7 @@ def test_closing_different_fees(node_factory, bitcoind, executor):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_closing_negotiation_reconnect(node_factory, bitcoind):
+def test_closing_negotiation_reconnect(node_factory, zcored):
     disconnects = ['-WIRE_CLOSING_SIGNED',
                    '@WIRE_CLOSING_SIGNED',
                    '+WIRE_CLOSING_SIGNED']
@@ -280,7 +280,7 @@ def test_closing_negotiation_reconnect(node_factory, bitcoind):
     chan = l1.fund_channel(l2, 10**6)
     l1.pay(l2, 200000000)
 
-    assert bitcoind.rpc.getmempoolinfo()['size'] == 0
+    assert zcored.rpc.getmempoolinfo()['size'] == 0
 
     l1.rpc.close(chan)
 
@@ -294,11 +294,11 @@ def test_closing_negotiation_reconnect(node_factory, bitcoind):
     # CLOSINGD_COMPLETE may come first).
     l1.daemon.wait_for_logs(['sendrawtx exit 0', ' to CLOSINGD_COMPLETE'])
     l2.daemon.wait_for_logs(['sendrawtx exit 0', ' to CLOSINGD_COMPLETE'])
-    assert bitcoind.rpc.getmempoolinfo()['size'] == 1
+    assert zcored.rpc.getmempoolinfo()['size'] == 1
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_closing_specified_destination(node_factory, bitcoind):
+def test_closing_specified_destination(node_factory, zcored):
     l1, l2, l3, l4 = node_factory.get_nodes(4)
 
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
@@ -313,7 +313,7 @@ def test_closing_specified_destination(node_factory, bitcoind):
     l1.pay(l3, 100000000)
     l1.pay(l4, 100000000)
 
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     addr = 'bcrt1qeyyk6sl5pr49ycpqyckvmttus5ttj25pd0zpvg'
     l1.rpc.close(chan12, None, addr)
     l1.rpc.call('close', {'id': chan13, 'destination': addr})
@@ -324,10 +324,10 @@ def test_closing_specified_destination(node_factory, bitcoind):
     # Both nodes should have disabled the channel in their view
     wait_for(lambda: len(l1.getactivechannels()) == 0)
 
-    assert bitcoind.rpc.getmempoolinfo()['size'] == 3
+    assert zcored.rpc.getmempoolinfo()['size'] == 3
 
     # Now grab the close transaction
-    closetxid = bitcoind.rpc.getrawmempool(False)
+    closetxid = zcored.rpc.getrawmempool(False)
     assert len(closetxid) == 3
 
     idindex = {}
@@ -338,8 +338,8 @@ def test_closing_specified_destination(node_factory, bitcoind):
         ]][0]
         assert idindex[n] in range(3)
 
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, [l1, l2, l3, l4])
+    zcored.generate_block(1)
+    sync_blockheight(zcored, [l1, l2, l3, l4])
 
     # l1 can't spent the output to addr.
     assert not l1.daemon.is_in_log(r'Owning output.* \(SEGWIT\).* txid %s.* CONFIRMED' % closetxid[0])
@@ -357,12 +357,12 @@ def test_closing_specified_destination(node_factory, bitcoind):
         output_num2 = [o for o in outputs if o['txid'] == closetxid[idindex[n]]][0]['output']
         output_num1 = 0 if output_num2 == 1 else 1
         # Check the another address is addr
-        assert addr == bitcoind.rpc.gettxout(closetxid[idindex[n]], output_num1)['scriptPubKey']['addresses'][0]
-        assert 1 == bitcoind.rpc.gettxout(closetxid[idindex[n]], output_num1)['confirmations']
+        assert addr == zcored.rpc.gettxout(closetxid[idindex[n]], output_num1)['scriptPubKey']['addresses'][0]
+        assert 1 == zcored.rpc.gettxout(closetxid[idindex[n]], output_num1)['confirmations']
 
 
 @unittest.skipIf(not COMPAT, "needs COMPAT=1")
-def test_deprecated_closing_compat(node_factory, bitcoind):
+def test_deprecated_closing_compat(node_factory, zcored):
     """ The old-style close command is:
         close {id} {force} {timeout}
     """
@@ -395,7 +395,7 @@ def test_deprecated_closing_compat(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_penalty_inhtlc(node_factory, bitcoind, executor, chainparams):
+def test_penalty_inhtlc(node_factory, zcored, executor, chainparams):
     """Test penalty transaction with an incoming HTLC"""
     # We suppress each one after first commit; HTLC gets added not fulfilled.
     # Feerates identical so we don't get gratuitous commit to update them
@@ -436,8 +436,8 @@ def test_penalty_inhtlc(node_factory, bitcoind, executor, chainparams):
     t.result(timeout=10)
 
     # Now we really mess things up!
-    bitcoind.rpc.sendrawtransaction(tx)
-    bitcoind.generate_block(1)
+    zcored.rpc.sendrawtransaction(tx)
+    zcored.generate_block(1)
 
     l2.daemon.wait_for_log(' to ONCHAIN')
     # FIXME: l1 should try to stumble along!
@@ -455,7 +455,7 @@ def test_penalty_inhtlc(node_factory, bitcoind, executor, chainparams):
     # FIXME: test HTLC tx race!
 
     # 100 blocks later, all resolved.
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
 
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
@@ -468,7 +468,7 @@ def test_penalty_inhtlc(node_factory, bitcoind, executor, chainparams):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_penalty_outhtlc(node_factory, bitcoind, executor, chainparams):
+def test_penalty_outhtlc(node_factory, zcored, executor, chainparams):
     """Test penalty transaction with an outgoing HTLC"""
     # First we need to get funds to l2, so suppress after second.
     # Feerates identical so we don't get gratuitous commit to update them
@@ -514,8 +514,8 @@ def test_penalty_outhtlc(node_factory, bitcoind, executor, chainparams):
     l2.daemon.wait_for_log('peer_in WIRE_REVOKE_AND_ACK')
 
     # Now we really mess things up!
-    bitcoind.rpc.sendrawtransaction(tx)
-    bitcoind.generate_block(1)
+    zcored.rpc.sendrawtransaction(tx)
+    zcored.generate_block(1)
 
     l2.daemon.wait_for_log(' to ONCHAIN')
     # FIXME: l1 should try to stumble along!
@@ -535,7 +535,7 @@ def test_penalty_outhtlc(node_factory, bitcoind, executor, chainparams):
     # FIXME: test HTLC tx race!
 
     # 100 blocks later, all resolved.
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
 
     wait_for(lambda: len(l2.rpc.listpeers()['peers']) == 0)
 
@@ -548,7 +548,7 @@ def test_penalty_outhtlc(node_factory, bitcoind, executor, chainparams):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_onchain_first_commit(node_factory, bitcoind):
+def test_onchain_first_commit(node_factory, zcored):
     """Onchain handling where funder immediately drops to chain"""
 
     # HTLC 1->2, 1 fails just after funding.
@@ -563,31 +563,31 @@ def test_onchain_first_commit(node_factory, bitcoind):
     l1.rpc.fundchannel(l2.info['id'], 10**6)
     l1.daemon.wait_for_log('sendrawtx exit 0')
 
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
 
     # l1 will drop to chain.
     l1.daemon.wait_for_log('permfail')
     l1.daemon.wait_for_log('sendrawtx exit 0')
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
     # 10 later, l1 should collect its to-self payment.
-    bitcoind.generate_block(10)
+    zcored.generate_block(10)
     l1.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
     # 94 later, l2 is done.
-    bitcoind.generate_block(94)
+    zcored.generate_block(94)
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # Now, 100 blocks and l1 should be done.
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_onchain_unwatch(node_factory, bitcoind):
+def test_onchain_unwatch(node_factory, zcored):
     """Onchaind should not watch random spends"""
     l1, l2 = node_factory.line_graph(2)
 
@@ -597,24 +597,24 @@ def test_onchain_unwatch(node_factory, bitcoind):
     l1.daemon.wait_for_log('Failing due to dev-fail command')
     l1.wait_for_channel_onchain(l2.info['id'])
 
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
     # 10 later, l1 should collect its to-self payment.
-    bitcoind.generate_block(10)
+    zcored.generate_block(10)
     l1.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
     # First time it sees it, onchaind cares.
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('Resolved OUR_UNILATERAL/DELAYED_OUTPUT_TO_US by our proposal '
                            'OUR_DELAYED_RETURN_TO_WALLET')
 
     # Now test unrelated onchain churn.
     # Daemon gets told about wallet; says it doesn't care.
     l1.rpc.withdraw(l1.rpc.newaddr()['bech32'], 'all')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log("but we don't care")
 
     # And lightningd should respect that!
@@ -623,9 +623,9 @@ def test_onchain_unwatch(node_factory, bitcoind):
     # So these should not generate further messages
     for i in range(5):
         l1.rpc.withdraw(l1.rpc.newaddr()['bech32'], 'all')
-        bitcoind.generate_block(1)
+        zcored.generate_block(1)
         # Make sure it digests the block
-        sync_blockheight(bitcoind, [l1])
+        sync_blockheight(zcored, [l1])
 
     # We won't see this again.
     assert not l1.daemon.is_in_log("but we don't care",
@@ -636,7 +636,7 @@ def test_onchain_unwatch(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_onchaind_replay(node_factory, bitcoind):
+def test_onchaind_replay(node_factory, zcored):
     disconnects = ['+WIRE_REVOKE_AND_ACK', 'permfail']
     options = {'watchtime-blocks': 201, 'cltv-delta': 101}
     # Feerates identical so we don't get gratuitous commit to update them
@@ -655,7 +655,7 @@ def test_onchaind_replay(node_factory, bitcoind):
     }
     l1.rpc.sendpay([routestep], rhash)
     l1.daemon.wait_for_log('sendrawtx exit 0')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     # Wait for nodes to notice the failure, this seach needle is after the
     # DB commit so we're sure the tx entries in onchaindtxs have been added
@@ -668,8 +668,8 @@ def test_onchaind_replay(node_factory, bitcoind):
 
     # Generate some blocks so we restart the onchaind from DB (we rescan
     # last_height - 100)
-    bitcoind.generate_block(100)
-    sync_blockheight(bitcoind, [l1, l2])
+    zcored.generate_block(100)
+    sync_blockheight(zcored, [l1, l2])
 
     # l1 should still have a running onchaind
     assert len(l1.db_query("SELECT * FROM channeltxs;")) > 0
@@ -682,13 +682,13 @@ def test_onchaind_replay(node_factory, bitcoind):
 
     # l1 should still notice that the funding was spent and that we should react to it
     l1.daemon.wait_for_log("Propose handling OUR_UNILATERAL/DELAYED_OUTPUT_TO_US by OUR_DELAYED_RETURN_TO_WALLET")
-    sync_blockheight(bitcoind, [l1])
-    bitcoind.generate_block(10)
-    sync_blockheight(bitcoind, [l1])
+    sync_blockheight(zcored, [l1])
+    zcored.generate_block(10)
+    sync_blockheight(zcored, [l1])
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_onchain_dust_out(node_factory, bitcoind, executor):
+def test_onchain_dust_out(node_factory, zcored, executor):
     """Onchain handling of outgoing dust htlcs (they should fail)"""
     # HTLC 1->2, 1 fails after it's irrevocably committed
     disconnects = ['@WIRE_REVOKE_AND_ACK', 'permfail']
@@ -714,12 +714,12 @@ def test_onchain_dust_out(node_factory, bitcoind, executor):
     # l1 will drop to chain.
     l1.daemon.wait_for_log('permfail')
     l1.wait_for_channel_onchain(l2.info['id'])
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
     # We use 3 blocks for "reasonable depth"
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
 
     # It should fail.
     with pytest.raises(RpcError, match=r'WIRE_PERMANENT_CHANNEL_FAILURE: missing in commitment tx'):
@@ -731,19 +731,19 @@ def test_onchain_dust_out(node_factory, bitcoind, executor):
         l1.rpc.sendpay([routestep], rhash)
 
     # 6 later, l1 should collect its to-self payment.
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
     l1.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
     # 94 later, l2 is done.
-    bitcoind.generate_block(94)
+    zcored.generate_block(94)
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # Restart l1, it should not crash!
     l1.restart()
 
     # Now, 100 blocks and l1 should be done.
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # Payment failed, BTW
@@ -751,7 +751,7 @@ def test_onchain_dust_out(node_factory, bitcoind, executor):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_onchain_timeout(node_factory, bitcoind, executor):
+def test_onchain_timeout(node_factory, zcored, executor):
     """Onchain handling of outgoing failed htlcs"""
     # HTLC 1->2, 1 fails just after it's irrevocably committed
     disconnects = ['+WIRE_REVOKE_AND_ACK*3', 'permfail']
@@ -776,8 +776,8 @@ def test_onchain_timeout(node_factory, bitcoind, executor):
         l1.rpc.waitsendpay(rhash)
 
     # Make sure CLTVs are different, in case it confuses onchaind.
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, [l1])
+    zcored.generate_block(1)
+    sync_blockheight(zcored, [l1])
 
     # Second one will cause drop to chain.
     l1.rpc.sendpay([routestep], rhash)
@@ -786,43 +786,43 @@ def test_onchain_timeout(node_factory, bitcoind, executor):
     # l1 will drop to chain.
     l1.daemon.wait_for_log('permfail')
     l1.wait_for_channel_onchain(l2.info['id'])
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
     # Wait for timeout.
     l1.daemon.wait_for_logs(['Propose handling OUR_UNILATERAL/DELAYED_OUTPUT_TO_US by OUR_DELAYED_RETURN_TO_WALLET .* after 5 blocks',
                              'Propose handling OUR_UNILATERAL/OUR_HTLC by OUR_HTLC_TIMEOUT_TX .* after 6 blocks'])
-    bitcoind.generate_block(4)
+    zcored.generate_block(4)
 
     l1.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TX',
                                    'OUR_UNILATERAL/OUR_HTLC')
 
     # We use 3 blocks for "reasonable depth"
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
 
     # It should fail.
     with pytest.raises(RpcError, match=r'WIRE_PERMANENT_CHANNEL_FAILURE: timed out'):
         payfuture.result(5)
 
     # 2 later, l1 spends HTLC (5 blocks total).
-    bitcoind.generate_block(2)
+    zcored.generate_block(2)
     l1.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_HTLC_TIMEOUT_TX/DELAYED_OUTPUT_TO_US')
 
     # 89 later, l2 is done.
-    bitcoind.generate_block(89)
+    zcored.generate_block(89)
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # Now, 100 blocks and l1 should be done.
-    bitcoind.generate_block(10)
-    sync_blockheight(bitcoind, [l1])
+    zcored.generate_block(10)
+    sync_blockheight(zcored, [l1])
     assert not l1.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # Payment failed, BTW
@@ -830,7 +830,7 @@ def test_onchain_timeout(node_factory, bitcoind, executor):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_onchain_middleman(node_factory, bitcoind):
+def test_onchain_middleman(node_factory, zcored):
     # HTLC 1->2->3, 1->2 goes down after 2 gets preimage from 3.
     disconnects = ['-WIRE_UPDATE_FULFILL_HTLC', 'permfail']
     l1 = node_factory.get_node()
@@ -844,7 +844,7 @@ def test_onchain_middleman(node_factory, bitcoind):
     c23 = l2.fund_channel(l3, 10**6)
 
     # Make sure routes finalized.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     l1.wait_channel_active(c23)
 
     # Give l1 some money to play with.
@@ -872,7 +872,7 @@ def test_onchain_middleman(node_factory, bitcoind):
 
     # l2 will drop to chain.
     l2.daemon.wait_for_log('sendrawtx exit 0')
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l2.daemon.wait_for_log(' to ONCHAIN')
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log('OUR_UNILATERAL/THEIR_HTLC')
@@ -882,7 +882,7 @@ def test_onchain_middleman(node_factory, bitcoind):
                                    'OUR_UNILATERAL/THEIR_HTLC')
 
     # Payment should succeed.
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l1.daemon.wait_for_log('THEIR_UNILATERAL/OUR_HTLC gave us preimage')
     err = q.get(timeout=10)
     if err:
@@ -892,22 +892,22 @@ def test_onchain_middleman(node_factory, bitcoind):
     assert not t.is_alive()
 
     # Three more, l2 can spend to-us.
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
     l2.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
     # One more block, HTLC tx is now spendable.
-    l1.bitcoin.generate_block(1)
+    l1.zcore.generate_block(1)
     l2.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_HTLC_SUCCESS_TX/DELAYED_OUTPUT_TO_US')
 
     # 100 blocks after last spend, l2 should be done.
-    l1.bitcoin.generate_block(100)
+    l1.zcore.generate_block(100)
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_onchain_feechange(node_factory, bitcoind, executor):
+def test_onchain_feechange(node_factory, zcored, executor):
     """Onchain handling when we restart with different fees"""
     # HTLC 1->2, 2 fails just after they're both irrevocably committed
     # We need 2 to drop to chain, because then 1's HTLC timeout tx
@@ -934,20 +934,20 @@ def test_onchain_feechange(node_factory, bitcoind, executor):
     # l2 will drop to chain.
     l2.daemon.wait_for_log('permfail')
     l2.wait_for_channel_onchain(l1.info['id'])
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
     # Wait for timeout.
     l1.daemon.wait_for_log('Propose handling THEIR_UNILATERAL/OUR_HTLC by OUR_HTLC_TIMEOUT_TO_US .* after 6 blocks')
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
 
     l1.wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                    'THEIR_UNILATERAL/OUR_HTLC')
 
     # Make sure that gets included.
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     # Now we restart with different feerates.
     l1.stop()
 
@@ -958,7 +958,7 @@ def test_onchain_feechange(node_factory, bitcoind, executor):
     l1.daemon.wait_for_log('Resolved THEIR_UNILATERAL/OUR_HTLC by our proposal OUR_HTLC_TIMEOUT_TO_US')
 
     # We use 3 blocks for "reasonable depth", so add two more
-    bitcoind.generate_block(2)
+    zcored.generate_block(2)
 
     # Note that the very similar test_onchain_timeout looks for a
     # different string: that's because it sees the JSONRPC response,
@@ -966,17 +966,17 @@ def test_onchain_feechange(node_factory, bitcoind, executor):
     l1.daemon.wait_for_log('WIRE_PERMANENT_CHANNEL_FAILURE')
 
     # 90 later, l2 is done
-    bitcoind.generate_block(89)
-    sync_blockheight(bitcoind, [l2])
+    zcored.generate_block(89)
+    sync_blockheight(zcored, [l2])
     assert not l2.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # Now, 7 blocks and l1 should be done.
-    bitcoind.generate_block(6)
-    sync_blockheight(bitcoind, [l1])
+    zcored.generate_block(6)
+    sync_blockheight(zcored, [l1])
     assert not l1.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # Payment failed, BTW
@@ -984,7 +984,7 @@ def test_onchain_feechange(node_factory, bitcoind, executor):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1 for dev-set-fees")
-def test_onchain_all_dust(node_factory, bitcoind, executor):
+def test_onchain_all_dust(node_factory, zcored, executor):
     """Onchain handling when we reduce output to all dust"""
     # HTLC 1->2, 2 fails just after they're both irrevocably committed
     # We need 2 to drop to chain, because then 1's HTLC timeout tx
@@ -1016,24 +1016,24 @@ def test_onchain_all_dust(node_factory, bitcoind, executor):
     l1.set_feerates((100000, 100000, 100000))
     l1.daemon.wait_for_log('Feerate estimate for normal set to [56789][0-9]{4}')
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
     # Wait for timeout.
     l1.daemon.wait_for_log('Propose handling THEIR_UNILATERAL/OUR_HTLC by IGNORING_TINY_PAYMENT .* after 6 blocks')
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     l1.wait_for_onchaind_broadcast('IGNORING_TINY_PAYMENT',
                                    'THEIR_UNILATERAL/OUR_HTLC')
     l1.daemon.wait_for_log('Ignoring output 0 of .*: THEIR_UNILATERAL/OUR_HTLC')
 
     # 100 deep and l2 forgets.
-    bitcoind.generate_block(93)
-    sync_blockheight(bitcoind, [l1, l2])
+    zcored.generate_block(93)
+    sync_blockheight(zcored, [l1, l2])
     assert not l2.daemon.is_in_log('onchaind complete, forgetting peer')
     assert not l1.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
     # l1 does not wait for ignored payment.
@@ -1041,7 +1041,7 @@ def test_onchain_all_dust(node_factory, bitcoind, executor):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1 for dev_fail")
-def test_onchain_different_fees(node_factory, bitcoind, executor):
+def test_onchain_different_fees(node_factory, zcored, executor):
     """Onchain handling when we've had a range of fees"""
     l1, l2 = node_factory.line_graph(2, fundchannel=True, fundamount=10**7,
                                      opts={'may_reconnect': True})
@@ -1066,7 +1066,7 @@ def test_onchain_different_fees(node_factory, bitcoind, executor):
     l1.rpc.dev_fail(l2.info['id'])
     l1.wait_for_channel_onchain(l2.info['id'])
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
 
@@ -1080,12 +1080,12 @@ def test_onchain_different_fees(node_factory, bitcoind, executor):
         'max_possible_feerate': 16000
     }]
 
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     # Three HTLCs, and one for the to-us output.
     l1.daemon.wait_for_logs(['sendrawtx exit 0'] * 4)
 
     # We use 3 blocks for "reasonable depth"
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
 
     with pytest.raises(Exception):
         p1.result(10)
@@ -1095,17 +1095,17 @@ def test_onchain_different_fees(node_factory, bitcoind, executor):
         p3.result(10)
 
     # Two more for HTLC timeout tx to be spent.
-    bitcoind.generate_block(2)
+    zcored.generate_block(2)
     l1.daemon.wait_for_logs(['sendrawtx exit 0'] * 3)
 
     # Now, 100 blocks it should be done.
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
     wait_for(lambda: l1.rpc.listpeers()['peers'] == [])
     wait_for(lambda: l2.rpc.listpeers()['peers'] == [])
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_permfail_new_commit(node_factory, bitcoind, executor):
+def test_permfail_new_commit(node_factory, zcored, executor):
     # Test case where we have two possible commits: it will use new one.
     disconnects = ['-WIRE_REVOKE_AND_ACK', 'permfail']
     # Feerates identical so we don't get gratuitous commit to update them
@@ -1120,7 +1120,7 @@ def test_permfail_new_commit(node_factory, bitcoind, executor):
 
     l2.daemon.wait_for_log('dev_disconnect permfail')
     l2.wait_for_channel_onchain(l1.info['id'])
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('Their unilateral tx, new commit point')
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
@@ -1128,23 +1128,23 @@ def test_permfail_new_commit(node_factory, bitcoind, executor):
     l1.daemon.wait_for_log('Propose handling THEIR_UNILATERAL/OUR_HTLC by OUR_HTLC_TIMEOUT_TO_US (.*) after 6 blocks')
 
     # OK, time out HTLC.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     l1.wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                    'THEIR_UNILATERAL/OUR_HTLC')
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('Resolved THEIR_UNILATERAL/OUR_HTLC by our proposal OUR_HTLC_TIMEOUT_TO_US')
     l2.daemon.wait_for_log('Ignoring output.*: OUR_UNILATERAL/THEIR_HTLC')
 
     t.cancel()
 
     # Now, 100 blocks it should be done.
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
     wait_for(lambda: l1.rpc.listpeers()['peers'] == [])
     wait_for(lambda: l2.rpc.listpeers()['peers'] == [])
 
 
-def setup_multihtlc_test(node_factory, bitcoind):
+def setup_multihtlc_test(node_factory, zcored):
     # l1 -> l2 -> l3 -> l4 -> l5 -> l6 -> l7
     # l1 and l7 ignore and HTLCs they're sent.
     # For each direction, we create these HTLCs with same payment_hash:
@@ -1181,8 +1181,8 @@ def setup_multihtlc_test(node_factory, bitcoind):
         nodes[-1].rpc.waitsendpay(h)
 
     # Now increment CLTV -> CLTV2
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, nodes)
+    zcored.generate_block(1)
+    sync_blockheight(zcored, nodes)
 
     # Now, the live attempts with CLTV2 (blackholed by end nodes)
     r = nodes[0].rpc.getroute(nodes[-1].info['id'], 10**8, 1)["route"]
@@ -1198,8 +1198,8 @@ def setup_multihtlc_test(node_factory, bitcoind):
     nodes[-2].rpc.sendpay(r, h)
 
     # Now increment CLTV -> CLTV3.
-    bitcoind.generate_block(1)
-    sync_blockheight(bitcoind, nodes)
+    zcored.generate_block(1)
+    sync_blockheight(zcored, nodes)
 
     r = nodes[2].rpc.getroute(nodes[-1].info['id'], 10**8, 1)["route"]
     nodes[2].rpc.sendpay(r, h)
@@ -1215,9 +1215,9 @@ def setup_multihtlc_test(node_factory, bitcoind):
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1 for dev_ignore_htlcs")
 @unittest.skipIf(SLOW_MACHINE and VALGRIND, "slow test")
-def test_onchain_multihtlc_our_unilateral(node_factory, bitcoind):
+def test_onchain_multihtlc_our_unilateral(node_factory, zcored):
     """Node pushes a channel onchain with multiple HTLCs with same payment_hash """
-    h, nodes = setup_multihtlc_test(node_factory, bitcoind)
+    h, nodes = setup_multihtlc_test(node_factory, zcored)
 
     mid = len(nodes) // 2
 
@@ -1228,7 +1228,7 @@ def test_onchain_multihtlc_our_unilateral(node_factory, bitcoind):
     nodes[mid].rpc.dev_fail(nodes[mid + 1].info['id'])
     nodes[mid].wait_for_channel_onchain(nodes[mid + 1].info['id'])
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     nodes[mid].daemon.wait_for_log(' to ONCHAIN')
     nodes[mid + 1].daemon.wait_for_log(' to ONCHAIN')
 
@@ -1254,22 +1254,22 @@ def test_onchain_multihtlc_our_unilateral(node_factory, bitcoind):
     nodes[-1].daemon.wait_for_log('peer_out WIRE_REVOKE_AND_ACK')
 
     # After at depth 5, midnode will spend its own to-self output.
-    bitcoind.generate_block(4)
+    zcored.generate_block(4)
     nodes[mid].wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                            'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
     # The three outgoing HTLCs time out at 21, 21 and 22 blocks.
-    bitcoind.generate_block(16)
+    zcored.generate_block(16)
     nodes[mid].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TX',
                                            'OUR_UNILATERAL/OUR_HTLC')
     nodes[mid].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TX',
                                            'OUR_UNILATERAL/OUR_HTLC')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     nodes[mid].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TX',
                                            'OUR_UNILATERAL/OUR_HTLC')
 
     # And three more for us to consider them all settled.
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
 
     # Now, those nodes should have correctly failed the HTLCs
     for n in nodes[:mid - 1]:
@@ -1277,18 +1277,18 @@ def test_onchain_multihtlc_our_unilateral(node_factory, bitcoind):
             n.rpc.waitsendpay(h, TIMEOUT)
 
     # Other timeouts are 27,27,28 blocks.
-    bitcoind.generate_block(2)
+    zcored.generate_block(2)
     nodes[mid].daemon.wait_for_logs(['Ignoring output.*: OUR_UNILATERAL/THEIR_HTLC'] * 2)
     for _ in range(2):
         nodes[mid + 1].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                                    'THEIR_UNILATERAL/OUR_HTLC')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     nodes[mid].daemon.wait_for_log('Ignoring output.*: OUR_UNILATERAL/THEIR_HTLC')
     nodes[mid + 1].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                                'THEIR_UNILATERAL/OUR_HTLC')
 
     # Depth 3 to consider it settled.
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
 
     for n in nodes[mid + 1:]:
         with pytest.raises(RpcError, match=r'WIRE_PERMANENT_CHANNEL_FAILURE'):
@@ -1296,7 +1296,7 @@ def test_onchain_multihtlc_our_unilateral(node_factory, bitcoind):
 
     # At depth 100 it's all done (we didn't bother waiting for mid+1's
     # spends, so that might still be going)
-    bitcoind.generate_block(97)
+    zcored.generate_block(97)
     nodes[mid].daemon.wait_for_logs(['onchaind complete, forgetting peer'])
 
     # No other channels should have failed.
@@ -1307,9 +1307,9 @@ def test_onchain_multihtlc_our_unilateral(node_factory, bitcoind):
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1 for dev_ignore_htlcs")
 @unittest.skipIf(SLOW_MACHINE and VALGRIND, "slow test")
-def test_onchain_multihtlc_their_unilateral(node_factory, bitcoind):
+def test_onchain_multihtlc_their_unilateral(node_factory, zcored):
     """Node pushes a channel onchain with multiple HTLCs with same payment_hash """
-    h, nodes = setup_multihtlc_test(node_factory, bitcoind)
+    h, nodes = setup_multihtlc_test(node_factory, zcored)
 
     mid = len(nodes) // 2
 
@@ -1320,7 +1320,7 @@ def test_onchain_multihtlc_their_unilateral(node_factory, bitcoind):
     nodes[mid + 1].rpc.dev_fail(nodes[mid].info['id'])
     nodes[mid + 1].wait_for_channel_onchain(nodes[mid].info['id'])
 
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     nodes[mid].daemon.wait_for_log(' to ONCHAIN')
     nodes[mid + 1].daemon.wait_for_log(' to ONCHAIN')
 
@@ -1346,21 +1346,21 @@ def test_onchain_multihtlc_their_unilateral(node_factory, bitcoind):
     nodes[-1].daemon.wait_for_log('peer_out WIRE_REVOKE_AND_ACK')
 
     # At depth 5, midnode+1 will spend its own to-self output.
-    bitcoind.generate_block(4)
+    zcored.generate_block(4)
     nodes[mid + 1].wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET')
 
     # The three outgoing HTLCs time out at depth 21, 21 and 22 blocks.
-    bitcoind.generate_block(16)
+    zcored.generate_block(16)
     nodes[mid].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                            'THEIR_UNILATERAL/OUR_HTLC')
     nodes[mid].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                            'THEIR_UNILATERAL/OUR_HTLC')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     nodes[mid].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TO_US',
                                            'THEIR_UNILATERAL/OUR_HTLC')
 
     # At depth 3 we consider them all settled.
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
 
     # Now, those nodes should have correctly failed the HTLCs
     for n in nodes[:mid - 1]:
@@ -1368,34 +1368,34 @@ def test_onchain_multihtlc_their_unilateral(node_factory, bitcoind):
             n.rpc.waitsendpay(h, TIMEOUT)
 
     # Other timeouts are at depths 27,27,28 blocks.
-    bitcoind.generate_block(2)
+    zcored.generate_block(2)
     nodes[mid].daemon.wait_for_logs(['Ignoring output.*: THEIR_UNILATERAL/THEIR_HTLC'] * 2)
     for _ in range(2):
         nodes[mid + 1].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TX',
                                                    'OUR_UNILATERAL/OUR_HTLC')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     nodes[mid].daemon.wait_for_log('Ignoring output.*: THEIR_UNILATERAL/THEIR_HTLC')
     nodes[mid + 1].wait_for_onchaind_broadcast('OUR_HTLC_TIMEOUT_TX',
                                                'OUR_UNILATERAL/OUR_HTLC')
 
     # At depth 3 we consider them all settled.
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
 
     for n in nodes[mid + 1:]:
         with pytest.raises(RpcError, match=r'WIRE_PERMANENT_CHANNEL_FAILURE'):
             n.rpc.waitsendpay(h, TIMEOUT)
 
     # At depth 5, mid+1 can spend HTLC_TIMEOUT_TX output.
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     for _ in range(2):
         nodes[mid + 1].wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                                    'OUR_HTLC_TIMEOUT_TX/DELAYED_OUTPUT_TO_US')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     nodes[mid + 1].wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                                'OUR_HTLC_TIMEOUT_TX/DELAYED_OUTPUT_TO_US')
 
     # At depth 100 they're all done.
-    bitcoind.generate_block(100)
+    zcored.generate_block(100)
     nodes[mid].daemon.wait_for_logs(['onchaind complete, forgetting peer'])
     nodes[mid + 1].daemon.wait_for_logs(['onchaind complete, forgetting peer'])
 
@@ -1406,7 +1406,7 @@ def test_onchain_multihtlc_their_unilateral(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_permfail_htlc_in(node_factory, bitcoind, executor):
+def test_permfail_htlc_in(node_factory, zcored, executor):
     # Test case where we fail with unsettled incoming HTLC.
     disconnects = ['-WIRE_UPDATE_FULFILL_HTLC', 'permfail']
     # Feerates identical so we don't get gratuitous commit to update them
@@ -1421,7 +1421,7 @@ def test_permfail_htlc_in(node_factory, bitcoind, executor):
 
     l2.daemon.wait_for_log('dev_disconnect permfail')
     l2.wait_for_channel_onchain(l1.info['id'])
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('Their unilateral tx, old commit point')
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
@@ -1430,12 +1430,12 @@ def test_permfail_htlc_in(node_factory, bitcoind, executor):
     # l2 then gets preimage, uses it instead of ignoring
     l2.wait_for_onchaind_broadcast('OUR_HTLC_SUCCESS_TX',
                                    'OUR_UNILATERAL/THEIR_HTLC')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     # OK, l1 sees l2 fulfill htlc.
     l1.daemon.wait_for_log('THEIR_UNILATERAL/OUR_HTLC gave us preimage')
     l2.daemon.wait_for_log('Propose handling OUR_HTLC_SUCCESS_TX/DELAYED_OUTPUT_TO_US by OUR_DELAYED_RETURN_TO_WALLET .* after 5 blocks')
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     l2.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_HTLC_SUCCESS_TX/DELAYED_OUTPUT_TO_US')
@@ -1443,15 +1443,15 @@ def test_permfail_htlc_in(node_factory, bitcoind, executor):
     t.cancel()
 
     # Now, 100 blocks it should be done.
-    bitcoind.generate_block(95)
+    zcored.generate_block(95)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
     assert not l2.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     l2.daemon.wait_for_log('onchaind complete, forgetting peer')
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_permfail_htlc_out(node_factory, bitcoind, executor):
+def test_permfail_htlc_out(node_factory, zcored, executor):
     # Test case where we fail with unsettled outgoing HTLC.
     disconnects = ['+WIRE_REVOKE_AND_ACK', 'permfail']
     l1 = node_factory.get_node(options={'dev-no-reconnect': None})
@@ -1467,7 +1467,7 @@ def test_permfail_htlc_out(node_factory, bitcoind, executor):
 
     l2.daemon.wait_for_log('dev_disconnect permfail')
     l2.wait_for_channel_onchain(l1.info['id'])
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('Their unilateral tx, old commit point')
     l1.daemon.wait_for_log(' to ONCHAIN')
     l2.daemon.wait_for_log(' to ONCHAIN')
@@ -1482,34 +1482,34 @@ def test_permfail_htlc_out(node_factory, bitcoind, executor):
                                    'THEIR_UNILATERAL/THEIR_HTLC')
 
     # l2 sees l1 fulfill tx.
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     l2.daemon.wait_for_log('OUR_UNILATERAL/OUR_HTLC gave us preimage')
     t.cancel()
 
     # l2 can send OUR_DELAYED_RETURN_TO_WALLET after 3 more blocks.
-    bitcoind.generate_block(3)
+    zcored.generate_block(3)
     l2.wait_for_onchaind_broadcast('OUR_DELAYED_RETURN_TO_WALLET',
                                    'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
     # Now, 100 blocks they should be done.
-    bitcoind.generate_block(95)
-    sync_blockheight(bitcoind, [l1, l2])
+    zcored.generate_block(95)
+    sync_blockheight(zcored, [l1, l2])
     assert not l1.daemon.is_in_log('onchaind complete, forgetting peer')
     assert not l2.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     l1.daemon.wait_for_log('onchaind complete, forgetting peer')
-    sync_blockheight(bitcoind, [l2])
+    sync_blockheight(zcored, [l2])
     assert not l2.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(3)
-    sync_blockheight(bitcoind, [l2])
+    zcored.generate_block(3)
+    sync_blockheight(zcored, [l2])
     assert not l2.daemon.is_in_log('onchaind complete, forgetting peer')
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
     wait_for(lambda: l2.rpc.listpeers()['peers'] == [])
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_permfail(node_factory, bitcoind):
+def test_permfail(node_factory, zcored):
     l1, l2 = node_factory.line_graph(2)
 
     # The funding change should be confirmed and our only output
@@ -1530,13 +1530,13 @@ def test_permfail(node_factory, bitcoind):
     l2.daemon.wait_for_log('Failing due to dev-fail command')
     l2.wait_for_channel_onchain(l1.info['id'])
 
-    assert l1.bitcoin.rpc.getmempoolinfo()['size'] == 1
+    assert l1.zcore.rpc.getmempoolinfo()['size'] == 1
 
     # Now grab the close transaction
-    closetxid = only_one(l1.bitcoin.rpc.getrawmempool(False))
+    closetxid = only_one(l1.zcore.rpc.getrawmempool(False))
 
     # l2 will send out tx (l1 considers it a transient error)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     l1.daemon.wait_for_log('Their unilateral tx, old commit point')
     l1.daemon.wait_for_log(' to ONCHAIN')
@@ -1557,7 +1557,7 @@ def test_permfail(node_factory, bitcoind):
     wait_for(check_billboard)
 
     # Now, mine 4 blocks so it sends out the spending tx.
-    bitcoind.generate_block(4)
+    zcored.generate_block(4)
 
     # onchaind notes to-local payment immediately.
     assert (closetxid, "confirmed") in set([(o['txid'], o['status']) for o in l1.rpc.listfunds()['outputs']])
@@ -1572,7 +1572,7 @@ def test_permfail(node_factory, bitcoind):
                                    'OUR_UNILATERAL/DELAYED_OUTPUT_TO_US')
 
     # 100 after l1 sees tx, it should be done.
-    bitcoind.generate_block(95)
+    zcored.generate_block(95)
     wait_for(lambda: l1.rpc.listpeers()['peers'] == [])
 
     wait_for(lambda: only_one(l2.rpc.listpeers(l1.info['id'])['peers'][0]['channels'])['status'] == [
@@ -1581,7 +1581,7 @@ def test_permfail(node_factory, bitcoind):
     ])
 
     # Now, 100 blocks l2 should be done.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     wait_for(lambda: l2.rpc.listpeers()['peers'] == [])
 
     # Only l1 has a direct output since all of l2's outputs are respent (it
@@ -1591,11 +1591,11 @@ def test_permfail(node_factory, bitcoind):
 
     # Check that the all the addresses match what we generated ourselves:
     for o in l1.rpc.listfunds()['outputs']:
-        txout = bitcoind.rpc.gettxout(o['txid'], o['output'])
+        txout = zcored.rpc.gettxout(o['txid'], o['output'])
         addr = txout['scriptPubKey']['addresses'][0]
         assert(addr == o['address'])
 
-    addr = l1.bitcoin.getnewaddress()
+    addr = l1.zcore.getnewaddress()
     l1.rpc.withdraw(addr, "all")
 
 
@@ -1613,7 +1613,7 @@ def test_shutdown(node_factory):
 
 @flaky
 @unittest.skipIf(not DEVELOPER, "needs to set upfront_shutdown_script")
-def test_option_upfront_shutdown_script(node_factory, bitcoind):
+def test_option_upfront_shutdown_script(node_factory, zcored):
     l1 = node_factory.get_node(start=False)
     # Insist on upfront script we're not going to match.
     l1.daemon.env["DEV_OPENINGD_UPFRONT_SHUTDOWN_SCRIPT"] = "76a91404b61f7dc1ea0dc99424464cc4064dc564d91e8988ac"
@@ -1629,8 +1629,8 @@ def test_option_upfront_shutdown_script(node_factory, bitcoind):
     l1.daemon.wait_for_log(r'received ERROR.*scriptpubkey .* is not as agreed upfront \(76a91404b61f7dc1ea0dc99424464cc4064dc564d91e8988ac\)')
 
     # Clear channel.
-    wait_for(lambda: len(bitcoind.rpc.getrawmempool()) != 0)
-    bitcoind.generate_block(1)
+    wait_for(lambda: len(zcored.rpc.getrawmempool()) != 0)
+    zcored.generate_block(1)
     wait_for(lambda: [c['state'] for c in only_one(l1.rpc.listpeers()['peers'])['channels']] == ['ONCHAIN'])
     wait_for(lambda: [c['state'] for c in only_one(l2.rpc.listpeers()['peers'])['channels']] == ['ONCHAIN'])
 
@@ -1644,8 +1644,8 @@ def test_option_upfront_shutdown_script(node_factory, bitcoind):
     l1.daemon.wait_for_log(r'received ERROR.*scriptpubkey .* is not as agreed upfront \(76a91404b61f7dc1ea0dc99424464cc4064dc564d91e8988ac\)')
 
     # Clear channel.
-    wait_for(lambda: len(bitcoind.rpc.getrawmempool()) != 0)
-    bitcoind.generate_block(1)
+    wait_for(lambda: len(zcored.rpc.getrawmempool()) != 0)
+    zcored.generate_block(1)
     wait_for(lambda: [c['state'] for c in only_one(l1.rpc.listpeers()['peers'])['channels']] == ['ONCHAIN', 'ONCHAIN'])
     wait_for(lambda: [c['state'] for c in only_one(l2.rpc.listpeers()['peers'])['channels']] == ['ONCHAIN', 'ONCHAIN'])
 

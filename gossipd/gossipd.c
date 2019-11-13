@@ -10,7 +10,7 @@
  * The gossip protocol itself is fairly simple, but has some twists which
  * add complexity to this daemon.
  */
-#include <bitcoin/chainparams.h>
+#include <zcore/chainparams.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/cast/cast.h>

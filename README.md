@@ -22,7 +22,7 @@ c-lightning is a lighweight, highly customizable and [standard compliant][std] i
 [![Irc][IRC]][IRC-link]
 [![Documentation Status](https://readthedocs.org/projects/lightning/badge/?version=docs)][docs]
 
-This implementation has been in production use on the Bitcoin mainnet since early 2018, with the launch of the [Blockstream Store][blockstream-store-blog].
+This implementation has been in production use on the ZCore mainnet since early 2018, with the launch of the [Blockstream Store][blockstream-store-blog].
 We recommend getting started by experimenting on `testnet` (or `regtest`), but the implementation is considered stable and can be safely used on mainnet.
 
 Any help testing the implementation, reporting bugs, or helping with outstanding issues is very welcome.
@@ -30,8 +30,8 @@ Don't hesitate to reach out to us on IRC at [#lightning-dev @ freenode.net][irc1
 
 ## Getting Started
 
-c-lightning only works on Linux and Mac OS, and requires a locally (or remotely) running `bitcoind` (version 0.16 or above) that is fully caught up with the network you're testing on.
-Pruning (`prune=n` option in `bitcoin.conf`) is partially supported, see [here](#pruning) for more details.
+c-lightning only works on Linux and Mac OS, and requires a locally (or remotely) running `zcored` (version 0.16 or above) that is fully caught up with the network you're testing on.
+Pruning (`prune=n` option in `zcore.conf`) is partially supported, see [here](#pruning) for more details.
 
 ### Installation
 
@@ -46,36 +46,36 @@ For the impatient here's the gist of it for Ubuntu:
 
 ```bash
 sudo apt-get install -y software-properties-common
-sudo add-apt-repository -u ppa:bitcoin/bitcoin
+sudo add-apt-repository -u ppa:zcore/zcore
 sudo add-apt-repository -u ppa:lightningnetwork/ppa
-sudo apt-get install bitcoind lightningd
+sudo apt-get install zcored lightningd
 ```
 
 ### Starting `lightningd`
 
 If you want to experiment with `lightningd`, there's a script to set
-up a `bitcoind` regtest test network of two local lightning nodes,
+up a `zcored` regtest test network of two local lightning nodes,
 which provides a convenient `start_ln` helper:
 
 ```bash
 . contrib/startup_regtest.sh
 ```
 
-To test with real bitcoin,  you will need to have a local `bitcoind` node running:
+To test with real zcore,  you will need to have a local `zcored` node running:
 
 ```bash
-bitcoind -daemon
+zcored -daemon
 ```
 
-Wait until `bitcoind` has synchronized with the network.
+Wait until `zcored` has synchronized with the network.
 
-Make sure that you do not have `walletbroadcast=0` in your `~/.bitcoin/bitcoin.conf`, or you may run into trouble.
+Make sure that you do not have `walletbroadcast=0` in your `~/.zcore/zcore.conf`, or you may run into trouble.
 Notice that running `lightningd` against a pruned node may cause some issues if not managed carefully, see [below](#pruning) for more information.
 
 You can start `lightningd` with the following command:
 
 ```bash
-lightningd --network=bitcoin --log-level=debug
+lightningd --network=zcore --log-level=debug
 ```
 
 This creates a `.lightning/` subdirectory in your home directory: see `man -l doc/lightningd.8` (or https://lightning.readthedocs.io/) for more runtime options.
@@ -89,7 +89,7 @@ will offer specific information on that command.
 
 Useful commands:
 
-* [newaddr](doc/lightning-newaddr.7.md): get a bitcoin address to deposit funds into your lightning node.
+* [newaddr](doc/lightning-newaddr.7.md): get a zcore address to deposit funds into your lightning node.
 * [listfunds](doc/lightning-listfunds.7.md): see where your funds are.
 * [connect](doc/lightning-connect.7.md): connect to another lightning node.
 * [fundchannel](doc/lightning-fundchannel.7.md): create a channel to another connected node.
@@ -128,7 +128,7 @@ open a channel:
 lightning-cli newaddr
 
 # Returns a transaction id <txid>
-bitcoin-cli sendtoaddress <address> <amount_in_bitcoins>
+zcore-cli sendtoaddress <address> <amount_in_zcores>
 ```
 
 `lightningd` will register the funds once the transaction is confirmed.
@@ -197,18 +197,18 @@ To use a configuration file, create a file named `config` within your lightning 
 
 ### Pruning
 
-c-lightning requires JSON-RPC access to a fully synchronized `bitcoind` in order to synchronize with the Bitcoin network.
-Access to ZeroMQ is not required and `bitcoind` does not need to be run with `txindex` like other implementations.
-The lightning daemon will poll `bitcoind` for new blocks that it hasn't processed yet, thus synchronizing itself with `bitcoind`.
-If `bitcoind` prunes a block that c-lightning has not processed yet, e.g., c-lightning was not running for a prolonged period, then `bitcoind` will not be able to serve the missing blocks, hence c-lightning will not be able to synchronize anymore and will be stuck.
-In order to avoid this situation you should be monitoring the gap between c-lightning's blockheight using `lightning-cli getinfo` and `bitcoind`'s blockheight using `bitcoin-cli getblockchaininfo`.
+c-lightning requires JSON-RPC access to a fully synchronized `zcored` in order to synchronize with the ZCore network.
+Access to ZeroMQ is not required and `zcored` does not need to be run with `txindex` like other implementations.
+The lightning daemon will poll `zcored` for new blocks that it hasn't processed yet, thus synchronizing itself with `zcored`.
+If `zcored` prunes a block that c-lightning has not processed yet, e.g., c-lightning was not running for a prolonged period, then `zcored` will not be able to serve the missing blocks, hence c-lightning will not be able to synchronize anymore and will be stuck.
+In order to avoid this situation you should be monitoring the gap between c-lightning's blockheight using `lightning-cli getinfo` and `zcored`'s blockheight using `zcore-cli getblockchaininfo`.
 If the two blockheights drift apart it might be necessary to intervene.
 
 ### HD wallet encryption
 
 You can encrypt the `hsm_secret` content (which is used to derive the HD wallet's master key) by passing the `--encrypted-hsm` startup argument, or by using the `hsmtool` (which you can find in the `tool/` directory at the root of this repo) with the `encrypt` method. You can unencrypt an encrypted `hsm_secret` using the `hsmtool` with the `decrypt` method.
 
-If you encrypt your `hsm_secret`, you will have to pass the `--encrypted-hsm` startup option to `lightningd`. Once your `hsm_secret` is encrypted, you __will not__ be able to access your funds without your password, so please beware with your password management. Also beware of not feeling too safe with an encrypted `hsm_secret`: unlike for `bitcoind` where the wallet encryption can restrict the usage of some RPC command, `lightningd` always need to access keys from the wallet which is thus __not locked__ (yet), even with an encrypted BIP32 master seed.
+If you encrypt your `hsm_secret`, you will have to pass the `--encrypted-hsm` startup option to `lightningd`. Once your `hsm_secret` is encrypted, you __will not__ be able to access your funds without your password, so please beware with your password management. Also beware of not feeling too safe with an encrypted `hsm_secret`: unlike for `zcored` where the wallet encryption can restrict the usage of some RPC command, `lightningd` always need to access keys from the wallet which is thus __not locked__ (yet), even with an encrypted BIP32 master seed.
 
 ### Developers
 

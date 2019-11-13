@@ -57,7 +57,7 @@ struct channel {
 	u64 next_htlc_id;
 
 	/* Funding txid and amounts */
-	struct bitcoin_txid funding_txid;
+	struct zcore_txid funding_txid;
 	u16 funding_outnum;
 	struct amount_sat funding;
 	struct amount_msat push;
@@ -75,9 +75,9 @@ struct channel {
 	struct oneshot *htlc_timeout;
 
 	/* Last tx they gave us. */
-	struct bitcoin_tx *last_tx;
+	struct zcore_tx *last_tx;
 	enum wallet_tx_type last_tx_type;
-	struct bitcoin_signature last_sig;
+	struct zcore_signature last_sig;
 	secp256k1_ecdsa_signature *last_htlc_sigs;
 
 	/* Keys for channel */
@@ -139,7 +139,7 @@ struct channel *new_channel(struct peer *peer, u64 dbid,
 			    u64 next_index_local,
 			    u64 next_index_remote,
 			    u64 next_htlc_id,
-			    const struct bitcoin_txid *funding_txid,
+			    const struct zcore_txid *funding_txid,
 			    u16 funding_outnum,
 			    struct amount_sat funding,
 			    struct amount_msat push,
@@ -150,8 +150,8 @@ struct channel *new_channel(struct peer *peer, u64 dbid,
 			    struct amount_msat msatoshi_to_us_min,
 			    struct amount_msat msatoshi_to_us_max,
 			    /* Stolen */
-			    struct bitcoin_tx *last_tx,
-			    const struct bitcoin_signature *last_sig,
+			    struct zcore_tx *last_tx,
+			    const struct zcore_signature *last_sig,
 			    /* NULL or stolen */
 			    secp256k1_ecdsa_signature *last_htlc_sigs,
 			    const struct channel_info *channel_info,
@@ -215,8 +215,8 @@ struct channel *active_channel_by_id(struct lightningd *ld,
 struct channel *channel_by_dbid(struct lightningd *ld, const u64 dbid);
 
 void channel_set_last_tx(struct channel *channel,
-			 struct bitcoin_tx *tx,
-			 const struct bitcoin_signature *sig,
+			 struct zcore_tx *tx,
+			 const struct zcore_signature *sig,
 			 enum wallet_tx_type type);
 
 static inline bool channel_can_add_htlc(const struct channel *channel)

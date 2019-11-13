@@ -20,7 +20,7 @@ or
 \[\{address: *all*\}\].
 It supports the any number of outputs.
 
-The *destination* of output is the address which can be of any Bitcoin accepted
+The *destination* of output is the address which can be of any ZCore accepted
 type, including bech32.
 
 The *amount* of output is the amount to be sent from the internal wallet
@@ -36,7 +36,7 @@ is the default.
 
 Otherwise, *feerate* is a number, with an optional suffix: *perkw* means
 the number is interpreted as satoshi-per-kilosipa (weight), and *perkb*
-means it is interpreted bitcoind-style as satoshi-per-kilobyte. Omitting
+means it is interpreted zcored-style as satoshi-per-kilobyte. Omitting
 the suffix is equivalent to *perkb*.
 
 *minconf* specifies the minimum number of confirmations that used
@@ -57,8 +57,8 @@ returned. You need to hand *txid* to **txsend** or **txdiscard**, as the
 inputs of this transaction are reserved until then, or until the daemon
 restarts.
 
-*unsigned\_tx* represents the raw bitcoin transaction (not yet signed)
-and *txid* represent the bitcoin transaction id.
+*unsigned\_tx* represents the raw zcore transaction (not yet signed)
+and *txid* represent the zcore transaction id.
 
 On failure, an error is reported and the transaction is not created.
 

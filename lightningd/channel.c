@@ -1,4 +1,4 @@
-#include <bitcoin/script.h>
+#include <zcore/script.h>
 #include <ccan/crypto/hkdf_sha256/hkdf_sha256.h>
 #include <ccan/tal/str/str.h>
 #include <common/json_command.h>
@@ -152,7 +152,7 @@ struct channel *new_channel(struct peer *peer, u64 dbid,
 			    u64 next_index_local,
 			    u64 next_index_remote,
 			    u64 next_htlc_id,
-			    const struct bitcoin_txid *funding_txid,
+			    const struct zcore_txid *funding_txid,
 			    u16 funding_outnum,
 			    struct amount_sat funding,
 			    struct amount_msat push,
@@ -163,8 +163,8 @@ struct channel *new_channel(struct peer *peer, u64 dbid,
 			    struct amount_msat msat_to_us_min,
 			    struct amount_msat msat_to_us_max,
 			    /* Stolen */
-			    struct bitcoin_tx *last_tx,
-			    const struct bitcoin_signature *last_sig,
+			    struct zcore_tx *last_tx,
+			    const struct zcore_signature *last_sig,
 			    /* NULL or stolen */
 			    secp256k1_ecdsa_signature *last_htlc_sigs,
 			    const struct channel_info *channel_info,
@@ -342,8 +342,8 @@ struct channel *channel_by_dbid(struct lightningd *ld, const u64 dbid)
 }
 
 void channel_set_last_tx(struct channel *channel,
-			 struct bitcoin_tx *tx,
-			 const struct bitcoin_signature *sig,
+			 struct zcore_tx *tx,
+			 const struct zcore_signature *sig,
 			 enum wallet_tx_type txtypes)
 {
 	assert(tx->chainparams);

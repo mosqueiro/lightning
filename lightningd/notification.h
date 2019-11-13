@@ -1,8 +1,8 @@
 #ifndef LIGHTNING_LIGHTNINGD_NOTIFICATION_H
 #define LIGHTNING_LIGHTNINGD_NOTIFICATION_H
 #include "config.h"
-#include <bitcoin/short_channel_id.h>
-#include <bitcoin/tx.h>
+#include <zcore/short_channel_id.h>
+#include <zcore/tx.h>
 #include <ccan/autodata/autodata.h>
 #include <ccan/json_escape/json_escape.h>
 #include <ccan/time/time.h>
@@ -45,7 +45,7 @@ void notify_invoice_payment(struct lightningd *ld, struct amount_msat amount,
 			    struct preimage preimage, const struct json_escape *label);
 
 void notify_channel_opened(struct lightningd *ld, struct node_id *node_id,
-			   struct amount_sat *funding_sat, struct bitcoin_txid *funding_txid,
+			   struct amount_sat *funding_sat, struct zcore_txid *funding_txid,
 			   bool *funding_locked);
 
 void notify_forward_event(struct lightningd *ld,

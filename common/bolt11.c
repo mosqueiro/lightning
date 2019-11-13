@@ -1,7 +1,7 @@
-#include <bitcoin/address.h>
-#include <bitcoin/base58.h>
-#include <bitcoin/chainparams.h>
-#include <bitcoin/script.h>
+#include <zcore/address.h>
+#include <zcore/base58.h>
+#include <zcore/chainparams.h>
+#include <zcore/script.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/cast/cast.h>
 #include <ccan/endian/endian.h>
@@ -39,10 +39,10 @@ struct multiplier {
  * * `p` (pico): multiply by 0.000000000001
  */
 static struct multiplier multipliers[] = {
-        { 'm', 10 * MSAT_PER_BTC / 1000 },
-        { 'u', 10 * MSAT_PER_BTC / 1000000 },
-        { 'n', 10 * MSAT_PER_BTC / 1000000000 },
-        { 'p', 10 * MSAT_PER_BTC / 1000000000000ULL }
+        { 'm', 10 * MSAT_PER_ZCR / 1000 },
+        { 'u', 10 * MSAT_PER_ZCR / 1000000 },
+        { 'n', 10 * MSAT_PER_ZCR / 1000000000 },
+        { 'p', 10 * MSAT_PER_ZCR / 1000000000000ULL }
 };
 
 /* If pad is false, we discard any bits which don't fit in the last byte.
@@ -305,7 +305,7 @@ static char *decode_n(struct bolt11 *b11,
 /* BOLT #11:
  *
  * `f` (9): `data_length` variable, depending on version. Fallback
- * on-chain address: for Bitcoin, this starts with a 5-bit `version`
+ * on-chain address: for ZCore, this starts with a 5-bit `version`
  * and contains a witness program or P2PKH or P2SH address.
  */
 static char *decode_f(struct bolt11 *b11,
@@ -322,13 +322,13 @@ static char *decode_f(struct bolt11 *b11,
 
         /* BOLT #11:
          *
-	 * for Bitcoin payments... MUST set an `f` field to a valid
+	 * for ZCore payments... MUST set an `f` field to a valid
 	 * witness version and program, OR to `17` followed by a
 	 * public key hash, OR to `18` followed by a script hash.
 	*/
         if (version == 17) {
                 /* Pay to pubkey hash (P2PKH) */
-                struct bitcoin_address pkhash;
+                struct zcore_address pkhash;
                 if (num_u8(data_length) != sizeof(pkhash))
                         return tal_fmt(b11, "f: pkhash length %zu",
                                        data_length);
@@ -545,10 +545,10 @@ struct bolt11 *bolt11_decode(const tal_t *ctx, const char *str,
         /* BOLT #11:
          *
 	 * The human-readable part of a Lightning invoice consists of two sections:
-	 * 1. `prefix`: `ln` + BIP-0173 currency prefix (e.g. `lnbc` for Bitcoin mainnet,
-	 *    `lntb` for Bitcoin testnet, and `lnbcrt` for Bitcoin regtest)
+	 * 1. `prefix`: `ln` + BIP-0173 currency prefix (e.g. `lnbc` for ZCore mainnet,
+	 *    `lntb` for ZCore testnet, and `lnbcrt` for ZCore regtest)
 	 * 1. `amount`: optional number in that currency, followed by an optional
-	 *    `multiplier` letter. The unit encoded here is the 'social' convention of a payment unit -- in the case of Bitcoin the unit is 'bitcoin' NOT satoshis.
+	 *    `multiplier` letter. The unit encoded here is the 'social' convention of a payment unit -- in the case of ZCore the unit is 'zcore' NOT satoshis.
 	*/
         prefix = tal_strndup(tmpctx, hrp, strcspn(hrp, "0123456789"));
 
@@ -620,7 +620,7 @@ struct bolt11 *bolt11_decode(const tal_t *ctx, const char *str,
 	 *
 	 * 1. `timestamp`: seconds-since-1970 (35 bits, big-endian)
 	 * 1. zero or more tagged parts
-	 * 1. `signature`: Bitcoin-style signature of above (520 bits)
+	 * 1. `signature`: ZCore-style signature of above (520 bits)
 	 */
         if (!pull_uint(&hu5, &data, &data_len, &b11->timestamp, 35))
                 return decode_fail(b11, fail, "Can't get 35-bit timestamp");
@@ -831,7 +831,7 @@ static void push_varlen_field(u5 **data, char type, u64 val)
 /* BOLT #11:
  *
  * `f` (9): `data_length` variable, depending on version. Fallback
- * on-chain address: for Bitcoin, this starts with a 5-bit `version`
+ * on-chain address: for ZCore, this starts with a 5-bit `version`
  * and contains a witness program or P2PKH or P2SH address.
  */
 static void push_fallback_addr(u5 **data, u5 version, const void *addr, u16 addr_len)
@@ -875,13 +875,13 @@ static void encode_c(u5 **data, u16 min_final_cltv_expiry)
 
 static void encode_f(u5 **data, const u8 *fallback)
 {
-        struct bitcoin_address pkh;
+        struct zcore_address pkh;
         struct ripemd160 sh;
         struct sha256 wsh;
 
         /* BOLT #11:
          *
-	 * for Bitcoin payments... MUST set an `f` field to a valid
+	 * for ZCore payments... MUST set an `f` field to a valid
 	 * witness version and program, OR to `17` followed by a
 	 * public key hash, OR to `18` followed by a script hash.
          */
@@ -990,9 +990,9 @@ char *bolt11_encode_(const tal_t *ctx,
         if (b11->msat) {
                 char postfix;
 		u64 msat = b11->msat->millisatoshis; /* Raw: best-multiplier calc */
-                if (msat % MSAT_PER_BTC == 0) {
+                if (msat % MSAT_PER_ZCR == 0) {
                         postfix = '\0';
-                        amount = msat / MSAT_PER_BTC;
+                        amount = msat / MSAT_PER_ZCR;
                 } else {
                         size_t i;
                         for (i = 0; i < ARRAY_SIZE(multipliers)-1; i++) {
@@ -1011,7 +1011,7 @@ char *bolt11_encode_(const tal_t *ctx,
          *
 	 * 1. `timestamp`: seconds-since-1970 (35 bits, big-endian)
 	 * 1. zero or more tagged parts
-	 * 1. `signature`: Bitcoin-style signature of above (520 bits)
+	 * 1. `signature`: ZCore-style signature of above (520 bits)
          */
         push_varlen_uint(&data, b11->timestamp, 35);
 

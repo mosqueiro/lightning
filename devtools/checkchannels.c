@@ -1,9 +1,9 @@
 #include "config.h"
 #include <assert.h>
-#include <bitcoin/privkey.h>
-#include <bitcoin/script.h>
-#include <bitcoin/short_channel_id.h>
-#include <bitcoin/tx.h>
+#include <zcore/privkey.h>
+#include <zcore/script.h>
+#include <zcore/short_channel_id.h>
+#include <zcore/tx.h>
 #include <ccan/crypto/hkdf_sha256/hkdf_sha256.h>
 #include <ccan/err/err.h>
 #include <ccan/mem/mem.h>
@@ -158,7 +158,7 @@ int main(int argc, char *argv[])
 		u64 dbid;
 		struct node_id peer_id;
 		struct short_channel_id scid;
-		struct bitcoin_txid funding_txid;
+		struct zcore_txid funding_txid;
 		u32 funding_outnum;
 		u64 funding_satoshis;
 		struct pubkey remote_fundingkey, local_fundingkey;
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 		copy_column(&peer_id, sizeof(peer_id), stmt, 1);
 		sqlite3_column_short_channel_id(stmt, 2, &scid);
 		copy_column(&funding_txid, sizeof(funding_txid), stmt, 3);
-		if (!bitcoin_txid_to_hex(&funding_txid,
+		if (!zcore_txid_to_hex(&funding_txid,
 					 txid_hex, sizeof(txid_hex)))
 			abort();
 		funding_outnum = sqlite3_column_int(stmt, 4);
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 		derive_funding_key(hsm_secret, &peer_id, dbid,
 				   &local_fundingkey);
 
-		wscript = bitcoin_redeem_2of2(ctx, &local_fundingkey, &remote_fundingkey);
+		wscript = zcore_redeem_2of2(ctx, &local_fundingkey, &remote_fundingkey);
 		expect_scriptpubkey = scriptpubkey_p2wsh(ctx, wscript);
 
 		if (!memeq(expect_scriptpubkey, tal_bytelen(expect_scriptpubkey),

@@ -216,17 +216,17 @@ class Type(FieldSet):
         'gossip_getchannels_entry',
         'failed_htlc',
         'utxo',
-        'bitcoin_tx',
+        'zcore_tx',
         'wirestring',
         'per_peer_state',
-        'bitcoin_tx_output',
+        'zcore_tx_output',
         'exclude_entry',
     ]
 
     # Some BOLT types are re-typed based on their field name
     # ('fieldname partial', 'original type', 'outer type'): ('true type', 'collapse array?')
     name_field_map = {
-        ('txid', 'sha256'): ('bitcoin_txid', False),
+        ('txid', 'sha256'): ('zcore_txid', False),
         ('amt', 'u64'): ('amount_msat', False),
         ('msat', 'u64'): ('amount_msat', False),
         ('satoshis', 'u64'): ('amount_sat', False),
@@ -242,7 +242,7 @@ class Type(FieldSet):
     name_remap = {
         'byte': 'u8',
         'signature': 'secp256k1_ecdsa_signature',
-        'chain_hash': 'bitcoin_blkid',
+        'chain_hash': 'zcore_blkid',
         'point': 'pubkey',
         # FIXME: omits 'pad'
     }

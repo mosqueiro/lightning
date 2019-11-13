@@ -1,8 +1,8 @@
 #include <assert.h>
-#include <bitcoin/address.h>
-#include <bitcoin/base58.h>
-#include <bitcoin/privkey.h>
-#include <bitcoin/pubkey.h>
+#include <zcore/address.h>
+#include <zcore/base58.h>
+#include <zcore/privkey.h>
+#include <zcore/pubkey.h>
 #include <ccan/str/hex/hex.h>
 #include <common/type_to_string.h>
 #include <common/utils.h>
@@ -21,10 +21,10 @@
 /* Generated stub for fromwire_amount_sat */
 struct amount_sat fromwire_amount_sat(const u8 **cursor UNNEEDED, size_t *max UNNEEDED)
 { fprintf(stderr, "fromwire_amount_sat called!\n"); abort(); }
-/* Generated stub for fromwire_bitcoin_txid */
-void fromwire_bitcoin_txid(const u8 **cursor UNNEEDED, size_t *max UNNEEDED,
-			   struct bitcoin_txid *txid UNNEEDED)
-{ fprintf(stderr, "fromwire_bitcoin_txid called!\n"); abort(); }
+/* Generated stub for fromwire_zcore_txid */
+void fromwire_zcore_txid(const u8 **cursor UNNEEDED, size_t *max UNNEEDED,
+			   struct zcore_txid *txid UNNEEDED)
+{ fprintf(stderr, "fromwire_zcore_txid called!\n"); abort(); }
 /* Generated stub for fromwire_bool */
 bool fromwire_bool(const u8 **cursor UNNEEDED, size_t *max UNNEEDED)
 { fprintf(stderr, "fromwire_bool called!\n"); abort(); }
@@ -46,9 +46,9 @@ u64 fromwire_u64(const u8 **cursor UNNEEDED, size_t *max UNNEEDED)
 /* Generated stub for towire_amount_sat */
 void towire_amount_sat(u8 **pptr UNNEEDED, const struct amount_sat sat UNNEEDED)
 { fprintf(stderr, "towire_amount_sat called!\n"); abort(); }
-/* Generated stub for towire_bitcoin_txid */
-void towire_bitcoin_txid(u8 **pptr UNNEEDED, const struct bitcoin_txid *txid UNNEEDED)
-{ fprintf(stderr, "towire_bitcoin_txid called!\n"); abort(); }
+/* Generated stub for towire_zcore_txid */
+void towire_zcore_txid(u8 **pptr UNNEEDED, const struct zcore_txid *txid UNNEEDED)
+{ fprintf(stderr, "towire_zcore_txid called!\n"); abort(); }
 /* Generated stub for towire_bool */
 void towire_bool(u8 **pptr UNNEEDED, bool v UNNEEDED)
 { fprintf(stderr, "towire_bool called!\n"); abort(); }
@@ -96,7 +96,7 @@ int main(void)
 {
 	setup_locale();
 
-	struct bitcoin_tx *input, *funding;
+	struct zcore_tx *input, *funding;
 	struct amount_sat fee, change;
 	struct pubkey local_funding_pubkey, remote_funding_pubkey;
 	struct privkey input_privkey;
@@ -107,24 +107,24 @@ int main(void)
 	struct amount_sat funding_sat;
 	u16 funding_outnum;
 	u8 *subscript, *script;
-	struct bitcoin_signature sig;
-	struct bitcoin_address addr;
+	struct zcore_signature sig;
+	struct zcore_address addr;
 	struct amount_sat tmpamt;
 	struct amount_asset asset;
 
 	secp256k1_ctx = secp256k1_context_create(SECP256K1_CONTEXT_VERIFY
 						 | SECP256K1_CONTEXT_SIGN);
 	setup_tmpctx();
-	chainparams = chainparams_for_network("bitcoin");
+	chainparams = chainparams_for_network("zcore");
 
 	/* BOLT #3:
 	 *
 	 * Block 1 coinbase transaction: 01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff03510101ffffffff0100f2052a010000001976a9143ca33c2e4446f4a305f23c80df8ad1afdcf652f988ac00000000
 	 */
-	input = bitcoin_tx_from_hex(tmpctx,
+	input = zcore_tx_from_hex(tmpctx,
 				    "01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff03510101ffffffff0100f2052a010000001976a9143ca33c2e4446f4a305f23c80df8ad1afdcf652f988ac00000000",
 				    strlen("01000000010000000000000000000000000000000000000000000000000000000000000000ffffffff03510101ffffffff0100f2052a010000001976a9143ca33c2e4446f4a305f23c80df8ad1afdcf652f988ac00000000"));
-	input->chainparams = chainparams_for_network("bitcoin");
+	input->chainparams = chainparams_for_network("zcore");
 	assert(input);
 
 	/* BOLT #3:
@@ -154,7 +154,7 @@ int main(void)
 				&remote_funding_pubkey))
 		abort();
 
-	bitcoin_txid(input, &utxo.txid);
+	zcore_txid(input, &utxo.txid);
 	utxo.outnum = 0;
 	utxo.amount = AMOUNT_SAT(5000000000);
 	utxo.is_p2sh = false;
@@ -185,7 +185,7 @@ int main(void)
 	printf("# fee: %s\n",
 	       type_to_string(tmpctx, struct amount_sat, &fee));
 
-	asset = bitcoin_tx_output_get_amount(funding, !funding_outnum);
+	asset = zcore_tx_output_get_amount(funding, !funding_outnum);
 	assert(amount_asset_is_main(&asset));
 	tmpamt = amount_asset_to_sat(&asset);
 	printf("change: %s\n",
@@ -199,8 +199,8 @@ int main(void)
 	sign_tx_input(funding, 0, subscript, NULL, &input_privkey, &inputkey,
 		      SIGHASH_ALL, &sig);
 
-	script = bitcoin_redeem_p2pkh(funding, &inputkey, &sig);
-	bitcoin_tx_input_set_script(funding, 0, script);
+	script = zcore_redeem_p2pkh(funding, &inputkey, &sig);
+	zcore_tx_input_set_script(funding, 0, script);
 	printf("funding tx: %s\n",
 	       tal_hex(tmpctx, linearize_tx(tmpctx, funding)));
 

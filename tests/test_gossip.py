@@ -22,7 +22,7 @@ DEVELOPER = os.getenv("DEVELOPER", config['DEVELOPER']) == "1"
 
 
 @unittest.skipIf(not DEVELOPER, "needs --dev-fast-gossip-prune")
-def test_gossip_pruning(node_factory, bitcoind):
+def test_gossip_pruning(node_factory, zcored):
     """ Create channel and see it being updated in time before pruning
     """
     l1, l2, l3 = node_factory.get_nodes(3, opts={'dev-fast-gossip-prune': None})
@@ -33,7 +33,7 @@ def test_gossip_pruning(node_factory, bitcoind):
     scid1 = l1.fund_channel(l2, 10**6)
     scid2 = l2.fund_channel(l3, 10**6)
 
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
 
     # Channels should be activated locally
     wait_for(lambda: [c['active'] for c in l1.rpc.listchannels()['channels']] == [True] * 4)
@@ -67,7 +67,7 @@ def test_gossip_pruning(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs --dev-fast-gossip, --dev-no-reconnect")
-def test_gossip_disable_channels(node_factory, bitcoind):
+def test_gossip_disable_channels(node_factory, zcored):
     """Simple test to check that channels get disabled correctly on disconnect and
     reenabled upon reconnecting
 
@@ -77,7 +77,7 @@ def test_gossip_disable_channels(node_factory, bitcoind):
 
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
     scid = l1.fund_channel(l2, 10**6)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     def count_active(node):
         chans = node.rpc.listchannels()['channels']
@@ -103,7 +103,7 @@ def test_gossip_disable_channels(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs --dev-allow-localhost")
-def test_announce_address(node_factory, bitcoind):
+def test_announce_address(node_factory, zcored):
     """Make sure our announcements are well formed."""
 
     # We do not allow announcement of duplicates.
@@ -121,7 +121,7 @@ def test_announce_address(node_factory, bitcoind):
     wait_for(lambda: l1.daemon.is_in_log('Cannot announce address 127.0.0.1:[0-9]*, already announcing 1.2.3.4:1234'))
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
     scid = l1.fund_channel(l2, 10**6)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Activate IO logging for l1.
     subprocess.run(['kill', '-USR1', l1.subd_pid('channeld')])
@@ -134,7 +134,7 @@ def test_announce_address(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_gossip_timestamp_filter(node_factory, bitcoind):
+def test_gossip_timestamp_filter(node_factory, zcored):
     # Updates get backdated 5 seconds with --dev-fast-gossip.
     backdate = 5
     l1, l2, l3, l4 = node_factory.line_graph(4, fundchannel=False)
@@ -143,7 +143,7 @@ def test_gossip_timestamp_filter(node_factory, bitcoind):
 
     # Make a public channel.
     chan12 = l1.fund_channel(l2, 10**5)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     l3.wait_for_channel_updates([chan12])
     after_12 = int(time.time())
@@ -151,7 +151,7 @@ def test_gossip_timestamp_filter(node_factory, bitcoind):
     # Make another one, different timestamp.
     time.sleep(1)
     chan23 = l2.fund_channel(l3, 10**5)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     l1.wait_for_channel_updates([chan23])
     after_23 = int(time.time())
@@ -208,7 +208,7 @@ def test_gossip_timestamp_filter(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs --dev-allow-localhost")
-def test_connect_by_gossip(node_factory, bitcoind):
+def test_connect_by_gossip(node_factory, zcored):
     """Test connecting to an unknown peer using node gossip
     """
     # l1 announces a bogus addresses.
@@ -226,7 +226,7 @@ def test_connect_by_gossip(node_factory, bitcoind):
 
     # Nodes are gossiped only if they have channels
     chanid = l2.fund_channel(l3, 10**6)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Let channel reach announcement depth
     l2.wait_channel_active(chanid)
@@ -277,7 +277,7 @@ def test_gossip_jsonrpc(node_factory):
     l2.rpc.listchannels()['channels']
 
     # Now proceed to funding-depth and do a full gossip round
-    l1.bitcoin.generate_block(5)
+    l1.zcore.generate_block(5)
     # Could happen in either order.
     l1.daemon.wait_for_logs(['peer_out WIRE_ANNOUNCEMENT_SIGNATURES',
                              'peer_in WIRE_ANNOUNCEMENT_SIGNATURES'])
@@ -334,7 +334,7 @@ def test_gossip_badsig(node_factory):
     l2.fund_channel(l3, 10**6)
 
     # Wait for route propagation.
-    l1.bitcoin.generate_block(5)
+    l1.zcore.generate_block(5)
     l1.daemon.wait_for_log('Received node_announcement for node {}'
                            .format(l3.info['id']))
     assert not l1.daemon.is_in_log('signature verification failed')
@@ -342,7 +342,7 @@ def test_gossip_badsig(node_factory):
     assert not l3.daemon.is_in_log('signature verification failed')
 
 
-def test_gossip_weirdalias(node_factory, bitcoind):
+def test_gossip_weirdalias(node_factory, zcored):
     weird_name = '\t \n \" \n \r \n \\'
     normal_name = 'Normal name'
     opts = [
@@ -359,7 +359,7 @@ def test_gossip_weirdalias(node_factory, bitcoind):
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
     l2.daemon.wait_for_log('openingd-{} chan #1: Handed peer, entering loop'.format(l1.info['id']))
     l2.fund_channel(l1, 10**6)
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
 
     # They should gossip together.
     l1.daemon.wait_for_log('Received node_announcement for node {}'
@@ -374,7 +374,7 @@ def test_gossip_weirdalias(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1 for --dev-no-reconnect")
-def test_gossip_persistence(node_factory, bitcoind):
+def test_gossip_persistence(node_factory, zcored):
     """Gossip for a while, restart and it should remember.
 
     Also tests for funding outpoint spends, and they should be persisted
@@ -391,9 +391,9 @@ def test_gossip_persistence(node_factory, bitcoind):
     scid23 = l2.fund_channel(l3, 10**6)
 
     # Make channels public, except for l3 -> l4, which is kept local-only for now
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     scid34 = l3.fund_channel(l4, 10**6)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     def active(node):
         chans = node.rpc.listchannels()['channels']
@@ -423,7 +423,7 @@ def test_gossip_persistence(node_factory, bitcoind):
     # channel from their network view
     l1.rpc.dev_fail(l2.info['id'])
     time.sleep(1)
-    bitcoind.generate_block(1)
+    zcored.generate_block(1)
 
     wait_for(lambda: active(l1) == [scid23, scid23])
     wait_for(lambda: active(l2) == [scid23, scid23])
@@ -469,7 +469,7 @@ def test_routing_gossip_reconnect(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_gossip_no_empty_announcements(node_factory, bitcoind):
+def test_gossip_no_empty_announcements(node_factory, zcored):
     # Need full IO logging so we can see gossip
     opts = {'log-level': 'io'}
     l1, l2 = node_factory.get_nodes(2, opts=opts)
@@ -491,7 +491,7 @@ def test_gossip_no_empty_announcements(node_factory, bitcoind):
 
     # Make an announced-but-not-updated channel.
     l3.fund_channel(l4, 10**5)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # 0x0100 = channel_announcement, which goes to l2 before l3 dies.
     l2.daemon.wait_for_log(r'\[IN\] 0100')
@@ -507,7 +507,7 @@ def test_gossip_no_empty_announcements(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "Too slow without --dev-fast-gossip")
-def test_routing_gossip(node_factory, bitcoind):
+def test_routing_gossip(node_factory, zcored):
     nodes = node_factory.get_nodes(5)
 
     for i in range(len(nodes) - 1):
@@ -516,7 +516,7 @@ def test_routing_gossip(node_factory, bitcoind):
         src.openchannel(dst, 20000)
 
     # Allow announce messages.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Deep check that all channels are in there
     comb = []
@@ -541,25 +541,25 @@ def test_routing_gossip(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs dev-set-max-scids-encode-size")
-def test_gossip_query_channel_range(node_factory, bitcoind):
+def test_gossip_query_channel_range(node_factory, zcored):
     l1, l2, l3, l4 = node_factory.line_graph(4, fundchannel=False)
 
     # Make public channels on consecutive blocks
     l1.fundwallet(10**6)
     l2.fundwallet(10**6)
 
-    num_tx = len(bitcoind.rpc.getrawmempool())
+    num_tx = len(zcored.rpc.getrawmempool())
     l1.rpc.fundchannel(l2.info['id'], 10**5)['tx']
-    wait_for(lambda: len(bitcoind.rpc.getrawmempool()) == num_tx + 1)
-    bitcoind.generate_block(1)
+    wait_for(lambda: len(zcored.rpc.getrawmempool()) == num_tx + 1)
+    zcored.generate_block(1)
 
-    num_tx = len(bitcoind.rpc.getrawmempool())
+    num_tx = len(zcored.rpc.getrawmempool())
     l2.rpc.fundchannel(l3.info['id'], 10**5)['tx']
-    wait_for(lambda: len(bitcoind.rpc.getrawmempool()) == num_tx + 1)
-    bitcoind.generate_block(1)
+    wait_for(lambda: len(zcored.rpc.getrawmempool()) == num_tx + 1)
+    zcored.generate_block(1)
 
     # Get them both to gossip depth.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make sure l2 has received all the gossip.
     l2.daemon.wait_for_logs(['Received node_announcement for node ' + l1.info['id'],
@@ -734,7 +734,7 @@ def test_gossip_query_channel_range(node_factory, bitcoind):
 
     # This should actually be large enough for zlib to kick in!
     scid34 = l3.fund_channel(l4, 10**5)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     l2.daemon.wait_for_log('Received node_announcement for node ' + l4.info['id'])
 
     # Restore infinite encode size.
@@ -763,7 +763,7 @@ def test_gossip_query_channel_range(node_factory, bitcoind):
 
 # Long test involving 4 lightningd instances.
 @unittest.skipIf(not DEVELOPER, "needs DEVELOPER=1")
-def test_report_routing_failure(node_factory, bitcoind):
+def test_report_routing_failure(node_factory, zcored):
     """Test routing failure and retrying of routing.
     """
     # The setup is as follows:
@@ -787,7 +787,7 @@ def test_report_routing_failure(node_factory, bitcoind):
     def fund_from_to_payer(lsrc, ldst, lpayer):
         lsrc.rpc.connect(ldst.info['id'], 'localhost', ldst.port)
         c = lsrc.fund_channel(ldst, 10000000)
-        bitcoind.generate_block(5)
+        zcored.generate_block(5)
         lpayer.wait_for_channel_updates([c])
 
     # Setup
@@ -805,7 +805,7 @@ def test_report_routing_failure(node_factory, bitcoind):
         print("src={}, dst={}".format(src.daemon.lightning_dir,
                                       dst.daemon.lightning_dir))
         channels.append(src.fund_channel(dst, 10**6))
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     for c in channels:
         l1.wait_channel_active(c)
@@ -816,7 +816,7 @@ def test_report_routing_failure(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "needs fast gossip")
-def test_query_short_channel_id(node_factory, bitcoind):
+def test_query_short_channel_id(node_factory, zcored):
     l1, l2, l3 = node_factory.get_nodes(3)
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
     l2.rpc.connect(l3.info['id'], 'localhost', l3.port)
@@ -840,7 +840,7 @@ def test_query_short_channel_id(node_factory, bitcoind):
     # Make channels public.
     scid12 = l1.fund_channel(l2, 10**5)
     scid23 = l2.fund_channel(l3, 10**5)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # It will know about everything.
     l1.daemon.wait_for_log('Received node_announcement for node {}'.format(l3.info['id']))
@@ -894,7 +894,7 @@ def test_query_short_channel_id(node_factory, bitcoind):
     assert msgs[9] == '010606226e46111a0b59caaf126043eb5bbf28c34f3a5e332a1fc7b2b73cf188910f01'
 
 
-def test_gossip_addresses(node_factory, bitcoind):
+def test_gossip_addresses(node_factory, zcored):
     l1 = node_factory.get_node(options={'announce-addr': [
         '[::]:3',
         '127.0.0.1:2',
@@ -905,7 +905,7 @@ def test_gossip_addresses(node_factory, bitcoind):
     l1.rpc.connect(l2.info['id'], 'localhost', l2.port)
 
     l1.fund_channel(l2, 100000)
-    bitcoind.generate_block(6)
+    zcored.generate_block(6)
     l2.daemon.wait_for_log('Received node_announcement for node {}'
                            .format(l1.info['id']))
 
@@ -1018,11 +1018,11 @@ def test_gossip_store_load_amount_truncated(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "Needs fast gossip propagation")
-def test_node_reannounce(node_factory, bitcoind):
+def test_node_reannounce(node_factory, zcored):
     "Test that we reannounce a node when parameters change"
     l1, l2 = node_factory.line_graph(2, opts={'may_reconnect': True,
                                               'log_all_io': True})
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Wait for node_announcement for l1.
     l2.daemon.wait_for_log(r'\[IN\] 0101.*{}'.format(l1.info['id']))
@@ -1093,7 +1093,7 @@ def test_gossipwith(node_factory):
     assert num_msgs == 5
 
 
-def test_gossip_notices_close(node_factory, bitcoind):
+def test_gossip_notices_close(node_factory, zcored):
     # We want IO logging so we can replay a channel_announce to l1;
     # We also *really* do feed it bad gossip!
     l1 = node_factory.get_node(options={'log-level': 'io'},
@@ -1104,7 +1104,7 @@ def test_gossip_notices_close(node_factory, bitcoind):
     l1.daemon.wait_for_log('Handed peer, entering loop')
     subprocess.run(['kill', '-USR1', l1.subd_pid('openingd')])
 
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # Make sure l1 learns about channel and nodes.
     wait_for(lambda: len(l1.rpc.listchannels()['channels']) == 2)
@@ -1118,7 +1118,7 @@ def test_gossip_notices_close(node_factory, bitcoind):
 
     txid = l2.rpc.close(l3.info['id'])['txid']
     wait_for(lambda: only_one(l2.rpc.listpeers(l3.info['id'])['peers'])['channels'][0]['state'] == 'CLOSINGD_COMPLETE')
-    bitcoind.generate_block(1, txid)
+    zcored.generate_block(1, txid)
 
     wait_for(lambda: l1.rpc.listchannels()['channels'] == [])
     wait_for(lambda: l1.rpc.listnodes()['nodes'] == [])
@@ -1177,7 +1177,7 @@ def test_getroute_exclude_duplicate(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip propagation is slow without DEVELOPER=1")
-def test_getroute_exclude(node_factory, bitcoind):
+def test_getroute_exclude(node_factory, zcored):
     """Test getroute's exclude argument"""
     l1, l2, l3, l4 = node_factory.line_graph(4, wait_for_announce=True)
 
@@ -1202,7 +1202,7 @@ def test_getroute_exclude(node_factory, bitcoind):
     # Now, create an alternate (better) route.
     l2.rpc.connect(l4.info['id'], 'localhost', l4.port)
     scid = l2.fund_channel(l4, 1000000, wait_for_active=False)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # We don't wait above, because we care about it hitting l1.
     l1.daemon.wait_for_logs([r'update for channel {}/0 now ACTIVE'
@@ -1240,7 +1240,7 @@ def test_getroute_exclude(node_factory, bitcoind):
     scid15 = l1.fund_channel(l5, 1000000, wait_for_active=False)
     l5.rpc.connect(l4.info['id'], 'localhost', l4.port)
     scid54 = l5.fund_channel(l4, 1000000, wait_for_active=False)
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
 
     # We don't wait above, because we care about it hitting l1.
     l1.daemon.wait_for_logs([r'update for channel {}/0 now ACTIVE'
@@ -1268,7 +1268,7 @@ def test_getroute_exclude(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "need dev-compact-gossip-store")
-def test_gossip_store_local_channels(node_factory, bitcoind):
+def test_gossip_store_local_channels(node_factory, zcored):
     l1, l2 = node_factory.line_graph(2, wait_for_announce=False)
 
     # We see this channel, even though it's not announced, because it's local.
@@ -1293,7 +1293,7 @@ def test_gossip_store_local_channels(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "need dev-compact-gossip-store")
-def test_gossip_store_private_channels(node_factory, bitcoind):
+def test_gossip_store_private_channels(node_factory, zcored):
     l1, l2 = node_factory.line_graph(2, announce_channels=False)
 
     # We see this channel, even though it's not announced, because it's local.
@@ -1317,14 +1317,14 @@ def test_gossip_store_private_channels(node_factory, bitcoind):
     assert len(chans) == 2
 
 
-def setup_gossip_store_test(node_factory, bitcoind):
+def setup_gossip_store_test(node_factory, zcored):
     l1, l2, l3 = node_factory.line_graph(3, fundchannel=False)
 
     # Create channel.
     scid23 = l2.fund_channel(l3, 10**6)
 
     # Have that channel announced.
-    bitcoind.generate_block(5)
+    zcored.generate_block(5)
     # Make sure we've got node_announcements
     wait_for(lambda: ['alias' in n for n in l2.rpc.listnodes()['nodes']] == [True, True])
 
@@ -1367,8 +1367,8 @@ def setup_gossip_store_test(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "need dev-compact-gossip-store")
-def test_gossip_store_compact_noappend(node_factory, bitcoind):
-    l2 = setup_gossip_store_test(node_factory, bitcoind)
+def test_gossip_store_compact_noappend(node_factory, zcored):
+    l2 = setup_gossip_store_test(node_factory, zcored)
 
     # It should truncate this, not leave junk!
     with open(os.path.join(l2.daemon.lightning_dir, 'gossip_store.tmp'), 'wb') as f:
@@ -1381,8 +1381,8 @@ def test_gossip_store_compact_noappend(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "updates are delayed without --dev-fast-gossip")
-def test_gossip_store_load_complex(node_factory, bitcoind):
-    l2 = setup_gossip_store_test(node_factory, bitcoind)
+def test_gossip_store_load_complex(node_factory, zcored):
+    l2 = setup_gossip_store_test(node_factory, zcored)
 
     l2.restart()
 
@@ -1390,8 +1390,8 @@ def test_gossip_store_load_complex(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "need dev-compact-gossip-store")
-def test_gossip_store_compact(node_factory, bitcoind):
-    l2 = setup_gossip_store_test(node_factory, bitcoind)
+def test_gossip_store_compact(node_factory, zcored):
+    l2 = setup_gossip_store_test(node_factory, zcored)
 
     # Now compact store.
     l2.rpc.call('dev-compact-gossip-store')
@@ -1406,8 +1406,8 @@ def test_gossip_store_compact(node_factory, bitcoind):
 
 
 @unittest.skipIf(not DEVELOPER, "need dev-compact-gossip-store")
-def test_gossip_store_compact_restart(node_factory, bitcoind):
-    l2 = setup_gossip_store_test(node_factory, bitcoind)
+def test_gossip_store_compact_restart(node_factory, zcored):
+    l2 = setup_gossip_store_test(node_factory, zcored)
 
     # Should restart ok.
     l2.restart()
@@ -1455,8 +1455,8 @@ def test_gossip_store_load_no_channel_update(node_factory):
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")
-def test_gossip_store_compact_on_load(node_factory, bitcoind):
-    l2 = setup_gossip_store_test(node_factory, bitcoind)
+def test_gossip_store_compact_on_load(node_factory, zcored):
+    l2 = setup_gossip_store_test(node_factory, zcored)
 
     l2.restart()
 
@@ -1464,19 +1464,19 @@ def test_gossip_store_compact_on_load(node_factory, bitcoind):
     wait_for(lambda: l2.daemon.is_in_log(r'gossip_store: Read 1/4/2/0 cannounce/cupdate/nannounce/cdelete from store \(0 deleted\) in 1450 bytes'))
 
 
-def test_gossip_announce_invalid_block(node_factory, bitcoind):
-    """bitcoind lags and we might get an announcement for a block we don't have.
+def test_gossip_announce_invalid_block(node_factory, zcored):
+    """zcored lags and we might get an announcement for a block we don't have.
 
     """
     # Need to slow down the poll interval so the announcement preceeds the
     # blockchain catchup, otherwise we won't call `getfilteredblock`.
     opts = {}
     if DEVELOPER:
-        opts['dev-bitcoind-poll'] = TIMEOUT // 2
+        opts['dev-zcored-poll'] = TIMEOUT // 2
 
     l1 = node_factory.get_node(options=opts)
-    bitcoind.generate_block(1)
-    assert bitcoind.rpc.getblockchaininfo()['blocks'] == 102
+    zcored.generate_block(1)
+    assert zcored.rpc.getblockchaininfo()['blocks'] == 102
 
     # Test gossip for an unknown block.
     subprocess.run(['devtools/gossipwith',
@@ -1487,10 +1487,10 @@ def test_gossip_announce_invalid_block(node_factory, bitcoind):
                    check=True, timeout=TIMEOUT)
 
     # Make sure it's OK once it's caught up.
-    sync_blockheight(bitcoind, [l1])
+    sync_blockheight(zcored, [l1])
 
 
-def test_gossip_announce_unknown_block(node_factory, bitcoind):
+def test_gossip_announce_unknown_block(node_factory, zcored):
     """Don't backfill the future!
 
     If we get a channel_announcement that is for a block height that is above
@@ -1503,12 +1503,12 @@ def test_gossip_announce_unknown_block(node_factory, bitcoind):
     # blockchain catchup, otherwise we won't call `getfilteredblock`.
     opts = {}
     if DEVELOPER:
-        opts['dev-bitcoind-poll'] = TIMEOUT // 2
+        opts['dev-zcored-poll'] = TIMEOUT // 2
 
     l1 = node_factory.get_node(options=opts)
 
-    bitcoind.generate_block(2)
-    assert bitcoind.rpc.getblockchaininfo()['blocks'] == 103
+    zcored.generate_block(2)
+    assert zcored.rpc.getblockchaininfo()['blocks'] == 103
 
     # Test gossip for unknown block.
     subprocess.run(['devtools/gossipwith',
@@ -1519,7 +1519,7 @@ def test_gossip_announce_unknown_block(node_factory, bitcoind):
                    check=True, timeout=TIMEOUT)
 
     # Make sure it's OK once it's caught up.
-    sync_blockheight(bitcoind, [l1])
+    sync_blockheight(zcored, [l1])
 
 
 @unittest.skipIf(not DEVELOPER, "gossip without DEVELOPER=1 is slow")

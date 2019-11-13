@@ -42,7 +42,7 @@ bool parse_amount_sat(struct amount_sat *sat UNNEEDED, const char *s UNNEEDED, s
 
 // issue #577
 
-static void do_json_tok_bitcoin_amount(const char* val, uint64_t expected)
+static void do_json_tok_zcore_amount(const char* val, uint64_t expected)
 {
 	uint64_t amount;
 	jsmntok_t tok;
@@ -50,24 +50,24 @@ static void do_json_tok_bitcoin_amount(const char* val, uint64_t expected)
 	tok.start = 0;
 	tok.end = strlen(val);
 
-	fprintf(stderr, "do_json_tok_bitcoin_amount(\"%s\", %"PRIu64"): ", val, expected);
+	fprintf(stderr, "do_json_tok_zcore_amount(\"%s\", %"PRIu64"): ", val, expected);
 
-	assert(json_to_bitcoin_amount(val, &tok, &amount) == true);
+	assert(json_to_zcore_amount(val, &tok, &amount) == true);
 	assert(amount == expected);
 
 	fprintf(stderr, "ok\n");
 }
 
 
-static int test_json_tok_bitcoin_amount(void)
+static int test_json_tok_zcore_amount(void)
 {
-	do_json_tok_bitcoin_amount("0.00000001", 1);
-	do_json_tok_bitcoin_amount("0.00000007", 7);
-	do_json_tok_bitcoin_amount("0.00000008", 8);
-	do_json_tok_bitcoin_amount("0.00000010", 10);
-	do_json_tok_bitcoin_amount("0.12345678", 12345678);
-	do_json_tok_bitcoin_amount("0.01234567", 1234567);
-	do_json_tok_bitcoin_amount("123.45678900", 12345678900);
+	do_json_tok_zcore_amount("0.00000001", 1);
+	do_json_tok_zcore_amount("0.00000007", 7);
+	do_json_tok_zcore_amount("0.00000008", 8);
+	do_json_tok_zcore_amount("0.00000010", 10);
+	do_json_tok_zcore_amount("0.12345678", 12345678);
+	do_json_tok_zcore_amount("0.01234567", 1234567);
+	do_json_tok_zcore_amount("123.45678900", 12345678900);
 
 	return 0;
 }
@@ -215,7 +215,7 @@ int main(void)
 	setup_tmpctx();
 
 	test_json_tok_size();
-	test_json_tok_bitcoin_amount();
+	test_json_tok_zcore_amount();
 	test_json_delve();
 	assert(!taken_any());
 	take_cleanup();

@@ -11,11 +11,11 @@
 #include <unistd.h>
 #include <wire/wire.h>
 
-/* Based on bitcoin's src/netaddress.cpp, hence different naming and styling!
+/* Based on zcore's src/netaddress.cpp, hence different naming and styling!
    version 7f31762cb6261806542cc6d1188ca07db98a6950:
 
    Copyright (c) 2009-2010 Satoshi Nakamoto
-   Copyright (c) 2009-2016 The Bitcoin Core developers
+   Copyright (c) 2009-2016 The ZCore Core developers
    Distributed under the MIT software license, see the accompanying
    file COPYING or http://www.opensource.org/licenses/mit-license.php.
 */
@@ -78,7 +78,7 @@ static bool RawEq(const struct wireaddr *addr, const void *cmp, size_t len)
     return memcmp(addr->addr + off, cmp, len) == 0;
 }
 
-/* The bitcoin code packs addresses backwards, so we map it here. */
+/* The zcore code packs addresses backwards, so we map it here. */
 static unsigned int GetByte(const struct wireaddr *addr, int n)
 {
     size_t off = IPv4In6(addr);

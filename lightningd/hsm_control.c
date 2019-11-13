@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <hsmd/gen_hsm_wire.h>
 #include <inttypes.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/hsm_control.h>
 #include <lightningd/log.h>
 #include <lightningd/log_status.h>
@@ -105,7 +105,7 @@ void hsm_init(struct lightningd *ld)
 
 	ld->hsm_fd = fds[0];
 	if (!wire_sync_write(ld->hsm_fd, towire_hsm_init(tmpctx,
-							 &ld->topology->bitcoind->chainparams->bip32_key_version,
+							 &ld->topology->zcored->chainparams->bip32_key_version,
 							 chainparams,
 							 ld->config.keypass,
 							 IFDEV(ld->dev_force_privkey, NULL),

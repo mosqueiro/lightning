@@ -1,8 +1,8 @@
 #ifndef LIGHTNING_WALLET_TXFILTER_H
 #define LIGHTNING_WALLET_TXFILTER_H
 #include "config.h"
-#include <bitcoin/pubkey.h>
-#include <bitcoin/tx.h>
+#include <zcore/pubkey.h>
+#include <zcore/tx.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/tal/tal.h>
 
@@ -32,7 +32,7 @@ void txfilter_add_derkey(struct txfilter *filter,
 /**
  * txfilter_match -- Check whether the tx matches the filter
  */
-bool txfilter_match(const struct txfilter *filter, const struct bitcoin_tx *tx);
+bool txfilter_match(const struct txfilter *filter, const struct zcore_tx *tx);
 
 /**
  * txfilter_add_scriptpubkey -- Add a serialized scriptpubkey to the filter
@@ -48,17 +48,17 @@ struct outpointfilter *outpointfilter_new(tal_t *ctx);
  * outpointfilter_add -- Add an outpoint to the filter
  */
 void outpointfilter_add(struct outpointfilter *of,
-			const struct bitcoin_txid *txid, const u32 outnum);
+			const struct zcore_txid *txid, const u32 outnum);
 
 /**
  * outpointfilter_matches -- Are we tracking this outpoint?
  */
 bool outpointfilter_matches(struct outpointfilter *of,
-			    const struct bitcoin_txid *txid, const u32 outnum);
+			    const struct zcore_txid *txid, const u32 outnum);
 /**
  * outpointfilter_remove -- Do not match this outpoint in the future
  */
 void outpointfilter_remove(struct outpointfilter *of,
-			   const struct bitcoin_txid *txid, const u32 outnum);
+			   const struct zcore_txid *txid, const u32 outnum);
 
 #endif /* LIGHTNING_WALLET_TXFILTER_H */

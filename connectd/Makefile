@@ -79,7 +79,7 @@ $(LIGHTNINGD_CONNECT_CONTROL_OBJS) : $(LIGHTNINGD_CONNECT_CONTROL_HEADERS)
 
 connectd-all: lightningd/lightning_connectd
 
-lightningd/lightning_connectd: $(LIGHTNINGD_CONNECT_OBJS) $(CONNECTD_COMMON_OBJS) $(BITCOIN_OBJS) $(WIRE_OBJS)
+lightningd/lightning_connectd: $(LIGHTNINGD_CONNECT_OBJS) $(CONNECTD_COMMON_OBJS) $(ZCORE_OBJS) $(WIRE_OBJS)
 
 connectd/gen_connect_wire.h: $(WIRE_GEN) connectd/connect_wire.csv
 	$(WIRE_GEN) --page header $@ connect_wire_type < connectd/connect_wire.csv > $@

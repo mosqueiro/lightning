@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <bitcoin/pubkey.h>
+#include <zcore/pubkey.h>
 #include <ccan/err/err.h>
 #include <ccan/opt/opt.h>
 #include <ccan/tal/str/str.h>

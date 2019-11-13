@@ -59,14 +59,14 @@ First, decide on and create a directory for *lightning-dir*, or just use
 the default *$HOME/.lightning*. Then create a *config* file in this
 directory containing your configuration.
 
-Your other main preparation would be to set up a mainnet Bitcoin
-fullnode, i.e. run a bitcoind(1) instance. The rest of this quick start
+Your other main preparation would be to set up a mainnet ZCore
+fullnode, i.e. run a zcored(1) instance. The rest of this quick start
 guide will assume you are reckless and want to spend real funds on
-Lightning. Indicate *network=bitcoin* in your *config* file explicitly.
+Lightning. Indicate *network=zcore* in your *config* file explicitly.
 
-C-Lightning needs to communicate with the Bitcoin Core RPC. You can set
-this up using *bitcoin-datadir*, *bitcoin-rpcconnect*,
-*bitcoin-rpcport*, *bitcoin-rpcuser*, and *bitcoin-rpcpassword* options
+C-Lightning needs to communicate with the ZCore Core RPC. You can set
+this up using *zcore-datadir*, *zcore-rpcconnect*,
+*zcore-rpcport*, *zcore-rpcuser*, and *zcore-rpcpassword* options
 in your *config* file.
 
 Finally, just to keep yourself sane, decide on a log file name and
@@ -74,7 +74,7 @@ indicate it using *log-file=lightningd.log* in your *config* file. You
 might be interested in viewing it periodically as you follow along on
 this guide.
 
-Once the **bitcoind** instance is running, start lightningd(8):
+Once the **zcored** instance is running, start lightningd(8):
 
     $ lightningd --lightning-dir=$HOME/.lightning --daemon
 
@@ -89,13 +89,13 @@ Check if things are working:
 The **getinfo** command in particular will return a *blockheight* field,
 which indicates the block height to which **lightningd** has been
 synchronized to (this is separate from the block height that your
-**bitcoind** has been synchronized to, and will always lag behind
-**bitcoind**). You will have to wait until the *blockheight* has reached
-the actual blockheight of the Bitcoin network.
+**zcored** has been synchronized to, and will always lag behind
+**zcored**). You will have to wait until the *blockheight* has reached
+the actual blockheight of the ZCore network.
 
 Before you can get funds offchain, you need to have some funds onchain
 owned by **lightningd** (which has a separate wallet from the
-**bitcoind** it connects to). Get an address for **lightningd** via
+**zcored** it connects to). Get an address for **lightningd** via
 lightning-newaddr(7) command as below (*--lightning-dir* option has been
 elided, specify it if you selected your own *lightning-dir*):
 
@@ -114,9 +114,9 @@ lightning-listfunds(7):
     $ lightning-cli listfunds
 
 Now you need to look for an arbitrary Lightning node to connect to,
-which you can do by using dig(1) and querying *lseed.bitcoinstats.com*:
+which you can do by using dig(1) and querying *lseed.zcorestats.com*:
 
-    $ dig lseed.bitcoinstats.com A
+    $ dig lseed.zcorestats.com A
 
 This will give 25 IPv4 addresses, you can select any one of those. You
 will also need to learn the corresponding public key, which you can

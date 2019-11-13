@@ -1,7 +1,7 @@
 #include "invoice.h"
-#include <bitcoin/address.h>
-#include <bitcoin/base58.h>
-#include <bitcoin/script.h>
+#include <zcore/address.h>
+#include <zcore/base58.h>
+#include <zcore/script.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/json_escape/json_escape.h>
 #include <ccan/str/hex/hex.h>
@@ -1016,7 +1016,7 @@ static void json_add_fallback(struct json_stream *response,
 			      const u8 *fallback,
 			      const struct chainparams *chain)
 {
-	struct bitcoin_address pkh;
+	struct zcore_address pkh;
 	struct ripemd160 sh;
 	struct sha256 wsh;
 
@@ -1024,7 +1024,7 @@ static void json_add_fallback(struct json_stream *response,
 	if (is_p2pkh(fallback, &pkh)) {
 		json_add_string(response, "type", "P2PKH");
 		json_add_string(response, "addr",
-				bitcoin_to_base58(tmpctx, chain, &pkh));
+				zcore_to_base58(tmpctx, chain, &pkh));
 	} else if (is_p2sh(fallback, &sh)) {
 		json_add_string(response, "type", "P2SH");
 		json_add_string(response, "addr",

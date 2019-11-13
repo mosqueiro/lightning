@@ -8,10 +8,10 @@
  */
 #include "config.h"
 #include <assert.h>
-#include <bitcoin/address.h>
-#include <bitcoin/script.h>
-#include <bitcoin/short_channel_id.h>
-#include <bitcoin/tx.h>
+#include <zcore/address.h>
+#include <zcore/script.h>
+#include <zcore/short_channel_id.h>
+#include <zcore/tx.h>
 #include <ccan/crc32c/crc32c.h>
 #include <ccan/err/err.h>
 #include <ccan/str/hex/hex.h>
@@ -107,7 +107,7 @@ static u32 crc32_of_update(const u8 *channel_update)
 	return sum;
 }
 
-static void print_update(const struct bitcoin_blkid *chainhash,
+static void print_update(const struct zcore_blkid *chainhash,
 			 const struct short_channel_id *scid,
 			 const struct update_opts *opts,
 			 bool is_lesser_key,
@@ -201,12 +201,12 @@ static void print_nannounce(const struct node_id *nodeid,
 int main(int argc, char *argv[])
 {
 	struct privkey node_privkey[2], funding_privkey[2];
-	struct pubkey node[2], bitcoin[2];
+	struct pubkey node[2], zcore[2];
 	struct node_id nodeid[2];
 	int lesser_key;
 	struct short_channel_id scid;
-	struct bitcoin_blkid chainhash;
-	secp256k1_ecdsa_signature nodesig[2], bitcoinsig[2];
+	struct zcore_blkid chainhash;
+	secp256k1_ecdsa_signature nodesig[2], zcoresig[2];
 	const u8 *features;
 	u8 *cannounce;
 	/* 2 bytes msg type + 256 bytes of signatures */
@@ -266,8 +266,8 @@ int main(int argc, char *argv[])
 
 	if (!pubkey_from_privkey(&node_privkey[0], &node[0])
 	    || !pubkey_from_privkey(&node_privkey[1], &node[1])
-	    || !pubkey_from_privkey(&funding_privkey[0], &bitcoin[0])
-	    || !pubkey_from_privkey(&funding_privkey[1], &bitcoin[1]))
+	    || !pubkey_from_privkey(&funding_privkey[0], &zcore[0])
+	    || !pubkey_from_privkey(&funding_privkey[1], &zcore[1]))
 		errx(1, "Bad privkeys");
 
 	lesser_key = pubkey_idx(&node[0], &node[1]);
@@ -276,31 +276,31 @@ int main(int argc, char *argv[])
 
 	/* First make msg with dummy sigs. */
 	memset(nodesig, 0, sizeof(nodesig));
-	memset(bitcoinsig, 0, sizeof(bitcoinsig));
+	memset(zcoresig, 0, sizeof(zcoresig));
 
 	cannounce = towire_channel_announcement(NULL,
 						&nodesig[lesser_key],
 						&nodesig[!lesser_key],
-						&bitcoinsig[lesser_key],
-						&bitcoinsig[!lesser_key],
+						&zcoresig[lesser_key],
+						&zcoresig[!lesser_key],
 						features, &chainhash,
 						&scid,
 						&nodeid[lesser_key],
 						&nodeid[!lesser_key],
-						&bitcoin[lesser_key],
-						&bitcoin[!lesser_key]);
+						&zcore[lesser_key],
+						&zcore[!lesser_key]);
 	sha256_double(&hash, cannounce + channel_announcement_offset,
 		      tal_count(cannounce) - channel_announcement_offset);
 	sign_hash(&node_privkey[0], &hash, &nodesig[0]);
-	sign_hash(&funding_privkey[0], &hash, &bitcoinsig[0]);
+	sign_hash(&funding_privkey[0], &hash, &zcoresig[0]);
 	sign_hash(&node_privkey[1], &hash, &nodesig[1]);
-	sign_hash(&funding_privkey[1], &hash, &bitcoinsig[1]);
+	sign_hash(&funding_privkey[1], &hash, &zcoresig[1]);
 
 	printf("type=channel_announcement\n");
 	printf("   node_signature_1=%s\n", sig_as_hex(&nodesig[lesser_key]));
 	printf("   node_signature_2=%s\n", sig_as_hex(&nodesig[!lesser_key]));
-	printf("   bitcoin_signature_1=%s\n", sig_as_hex(&bitcoinsig[lesser_key]));
-	printf("   bitcoin_signature_2=%s\n", sig_as_hex(&bitcoinsig[!lesser_key]));
+	printf("   zcore_signature_1=%s\n", sig_as_hex(&zcoresig[lesser_key]));
+	printf("   zcore_signature_2=%s\n", sig_as_hex(&zcoresig[!lesser_key]));
 	printf("   features=%s\n", tal_hex(NULL, features));
 	printf("   chain_hash=%s\n", tal_hexstr(NULL, &chainhash, sizeof(chainhash)));
 	printf("   short_channel_id=%s\n", short_channel_id_to_str(NULL, &scid));
@@ -308,10 +308,10 @@ int main(int argc, char *argv[])
 	       node_id_to_hexstr(NULL, &nodeid[lesser_key]));
 	printf("   node_id_2=%s\n",
 	       node_id_to_hexstr(NULL, &nodeid[!lesser_key]));
-	printf("   bitcoin_key_1=%s\n",
-	       pubkey_to_hexstr(NULL, &bitcoin[lesser_key]));
-	printf("   bitcoin_key_2=%s\n",
-	       pubkey_to_hexstr(NULL, &bitcoin[!lesser_key]));
+	printf("   zcore_key_1=%s\n",
+	       pubkey_to_hexstr(NULL, &zcore[lesser_key]));
+	printf("   zcore_key_2=%s\n",
+	       pubkey_to_hexstr(NULL, &zcore[!lesser_key]));
 
 	printf("\n#Node 1:\n");
 	print_update(&chainhash, &scid, &opts[0], lesser_key == 0,

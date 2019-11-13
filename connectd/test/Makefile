@@ -1,6 +1,6 @@
 check-units: connectd-tests
 
-# Note that these actually #include everything they need, except ccan/ and bitcoin/.
+# Note that these actually #include everything they need, except ccan/ and zcore/.
 # That allows for unit testing of statics, and special effects.
 CONNECTD_TEST_SRC := $(wildcard connectd/test/run-*.c)
 CONNECTD_TEST_OBJS := $(CONNECTD_TEST_SRC:.c=.o)
@@ -14,7 +14,7 @@ CONNECTD_TEST_COMMON_OBJS :=			\
 
 update-mocks: $(CONNECTD_TEST_SRC:%=update-mocks/%)
 
-$(CONNECTD_TEST_PROGRAMS): $(CONNECTD_TEST_COMMON_OBJS) $(BITCOIN_OBJS)
+$(CONNECTD_TEST_PROGRAMS): $(CONNECTD_TEST_COMMON_OBJS) $(ZCORE_OBJS)
 
 # Test objects depend on ../ src and headers.
 $(CONNECTD_TEST_OBJS): $(LIGHTNINGD_CONNECT_HEADERS) $(LIGHTNINGD_CONNECT_SRC)

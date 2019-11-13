@@ -258,7 +258,7 @@ static const char *test_vectors[] = {
 
 static void get_chainhash(const char *test_vector,
 			  const jsmntok_t *obj,
-			  struct bitcoin_blkid *chain_hash)
+			  struct zcore_blkid *chain_hash)
 {
 	const jsmntok_t *tok = json_get_member(test_vector, obj, "chainHash");
 	size_t hexlen = tok->end - tok->start;
@@ -298,7 +298,7 @@ static u8 *get_scid_array(const tal_t *ctx,
 
 static u8 *test_query_channel_range(const char *test_vector, const jsmntok_t *obj)
 {
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	u32 firstBlockNum, numberOfBlocks;
 	const jsmntok_t *opt, *t;
 	struct tlv_query_channel_range_tlvs *tlvs
@@ -326,7 +326,7 @@ static u8 *test_query_channel_range(const char *test_vector, const jsmntok_t *ob
 
 static u8 *test_reply_channel_range(const char *test_vector, const jsmntok_t *obj)
 {
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	u32 firstBlockNum, numberOfBlocks, complete;
 	const jsmntok_t *opt, *t;
 	size_t i;
@@ -445,7 +445,7 @@ get_query_flags_array(const tal_t *ctx,
 static u8 *test_query_short_channel_ids(const char *test_vector,
 					const jsmntok_t *obj)
 {
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	const jsmntok_t *opt;
 	u8 *encoded, *msg;
 	struct tlv_query_short_channel_ids_tlvs *tlvs;

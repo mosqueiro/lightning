@@ -1,19 +1,19 @@
 #ifndef LIGHTNING_COMMON_HTLC_TX_H
 #define LIGHTNING_COMMON_HTLC_TX_H
 #include "config.h"
-#include <bitcoin/chainparams.h>
+#include <zcore/chainparams.h>
 #include <common/amount.h>
 #include <common/htlc.h>
 #include <common/utils.h>
 
-struct bitcoin_signature;
-struct bitcoin_txid;
+struct zcore_signature;
+struct zcore_txid;
 struct keyset;
 struct preimage;
 struct pubkey;
 struct ripemd160;
 
-/** Attempt to compute the elements overhead given a base bitcoin size.
+/** Attempt to compute the elements overhead given a base zcore size.
  *
  * The overhead consists of 2 empty proofs for the transaction, 6 bytes of
  * proofs per input and 35 bytes per output. In addition the explicit fee
@@ -24,11 +24,11 @@ static inline size_t elements_add_overhead(size_t weight, size_t incount,
 {
 	if (chainparams->is_elements) {
 		/* Each transaction has surjection and rangeproof (both empty
-		 * for us as long as we use unblinded L-BTC transactions). */
+		 * for us as long as we use unblinded L-ZCR transactions). */
 		weight += 2 * 4;
 		/* For elements we also need to add the fee output and the
 		 * overhead for rangeproofs into the mix. */
-		weight += (8 + 1) * 4; /* Bitcoin style output */
+		weight += (8 + 1) * 4; /* ZCore style output */
 
 		/* All outputs have a bit of elements overhead */
 		weight += (32 + 1 + 1 + 1) * 4 * (outcount + 1); /* Elements added fields */
@@ -65,9 +65,9 @@ static inline struct amount_sat htlc_success_fee(u32 feerate_per_kw)
 
 /* Create HTLC-success tx to spend a received HTLC commitment tx
  * output; doesn't fill in input witness. */
-struct bitcoin_tx *htlc_success_tx(const tal_t *ctx,
+struct zcore_tx *htlc_success_tx(const tal_t *ctx,
 				   const struct chainparams *chainparams,
-				   const struct bitcoin_txid *commit_txid,
+				   const struct zcore_txid *commit_txid,
 				   unsigned int commit_output_number,
 				   struct amount_msat htlc_msatoshi,
 				   u16 to_self_delay,
@@ -75,20 +75,20 @@ struct bitcoin_tx *htlc_success_tx(const tal_t *ctx,
 				   const struct keyset *keyset);
 
 /* Fill in the witness for HTLC-success tx produced above. */
-void htlc_success_tx_add_witness(struct bitcoin_tx *htlc_success,
+void htlc_success_tx_add_witness(struct zcore_tx *htlc_success,
 				 const struct abs_locktime *htlc_abstimeout,
 				 const struct pubkey *localkey,
 				 const struct pubkey *remotekey,
-				 const struct bitcoin_signature *localsig,
-				 const struct bitcoin_signature *remotesig,
+				 const struct zcore_signature *localsig,
+				 const struct zcore_signature *remotesig,
 				 const struct preimage *payment_preimage,
 				 const struct pubkey *revocationkey);
 
 /* Create HTLC-timeout tx to spend an offered HTLC commitment tx
  * output; doesn't fill in input witness. */
-struct bitcoin_tx *htlc_timeout_tx(const tal_t *ctx,
+struct zcore_tx *htlc_timeout_tx(const tal_t *ctx,
 				   const struct chainparams *chainparams,
-				   const struct bitcoin_txid *commit_txid,
+				   const struct zcore_txid *commit_txid,
 				   unsigned int commit_output_number,
 				   struct amount_msat htlc_msatoshi,
 				   u32 cltv_expiry,
@@ -97,13 +97,13 @@ struct bitcoin_tx *htlc_timeout_tx(const tal_t *ctx,
 				   const struct keyset *keyset);
 
 /* Fill in the witness for HTLC-timeout tx produced above. */
-void htlc_timeout_tx_add_witness(struct bitcoin_tx *htlc_timeout,
+void htlc_timeout_tx_add_witness(struct zcore_tx *htlc_timeout,
 				 const struct pubkey *localkey,
 				 const struct pubkey *remotekey,
 				 const struct sha256 *payment_hash,
 				 const struct pubkey *revocationkey,
-				 const struct bitcoin_signature *localsig,
-				 const struct bitcoin_signature *remotesig);
+				 const struct zcore_signature *localsig,
+				 const struct zcore_signature *remotesig);
 
 
 /* Generate the witness script for an HTLC the other side offered:

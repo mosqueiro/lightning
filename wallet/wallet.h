@@ -3,8 +3,8 @@
 
 #include "config.h"
 #include "db.h"
-#include <bitcoin/chainparams.h>
-#include <bitcoin/tx.h>
+#include <zcore/chainparams.h>
+#include <zcore/tx.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/crypto/shachain/shachain.h>
 #include <ccan/list/list.h>
@@ -12,7 +12,7 @@
 #include <common/channel_config.h>
 #include <common/utxo.h>
 #include <common/wallet.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/htlc_end.h>
 #include <lightningd/invoice.h>
@@ -59,10 +59,10 @@ struct unreleased_tx {
 	/* All the utxos. */
 	struct wallet_tx *wtx;
 	/* Outputs(scriptpubkey and satoshi) this pays to. */
-	struct bitcoin_tx_output **outputs;
+	struct zcore_tx_output **outputs;
 	/* The tx itself (unsigned initially) */
-	struct bitcoin_tx *tx;
-	struct bitcoin_txid txid;
+	struct zcore_tx *tx;
+	struct zcore_txid txid;
 	/* Index of change output, or -1 if none. */
 	int change_outnum;
 };
@@ -268,7 +268,7 @@ struct wallet_payment {
 };
 
 struct outpoint {
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	u32 blockheight;
 	u32 txindex;
 	u32 outnum;
@@ -289,20 +289,20 @@ struct channeltx {
 	u32 channel_id;
 	int type;
 	u32 blockheight;
-	struct bitcoin_txid txid;
-	struct bitcoin_tx *tx;
+	struct zcore_txid txid;
+	struct zcore_tx *tx;
 	u32 input_num;
 	u32 depth;
 };
 
 struct wallet_transaction {
-	struct bitcoin_txid id;
+	struct zcore_txid id;
 	u32 blockheight;
 	u32 txindex;
 	u8 *rawtx;
 
 	/* Fully parsed transaction */
-	const struct bitcoin_tx *tx;
+	const struct zcore_tx *tx;
 
 	struct tx_annotation annotation;
 
@@ -334,7 +334,7 @@ bool wallet_add_utxo(struct wallet *w, struct utxo *utxo,
  * wallet_confirm_tx - Confirm a tx which contains a UTXO.
  */
 void wallet_confirm_tx(struct wallet *w,
-		       const struct bitcoin_txid *txid,
+		       const struct zcore_txid *txid,
 		       const u32 confirmation_height);
 
 /**
@@ -348,7 +348,7 @@ void wallet_confirm_tx(struct wallet *w,
  * `output_state_any` as @oldstatus.
  */
 bool wallet_update_output_status(struct wallet *w,
-				 const struct bitcoin_txid *txid,
+				 const struct zcore_txid *txid,
 				 const u32 outnum, enum output_status oldstatus,
 				 enum output_status newstatus);
 
@@ -393,7 +393,7 @@ const struct utxo **wallet_select_all(const tal_t *ctx, struct wallet *w,
  * Returns an array of `utxo` structs.
  */
 const struct utxo **wallet_select_specific(const tal_t *ctx, struct wallet *w,
-					struct bitcoin_txid **txids,
+					struct zcore_txid **txids,
 					u32 **outnums);
 
 /**
@@ -533,7 +533,7 @@ void wallet_blocks_heights(struct wallet *w, u32 def, u32 *min, u32 *max);
 /**
  * wallet_extract_owned_outputs - given a tx, extract all of our outputs
  */
-int wallet_extract_owned_outputs(struct wallet *w, const struct bitcoin_tx *tx,
+int wallet_extract_owned_outputs(struct wallet *w, const struct zcore_tx *tx,
 				 const u32 *blockheight,
 				 struct amount_sat *total);
 
@@ -615,7 +615,7 @@ bool wallet_htlcs_load_for_channel(struct wallet *wallet,
  * @wallet: wallet to load from
  * @id: channel database id
  * @remote_ann_node_sig: location to load remote_ann_node_sig to
- * @remote_ann_bitcoin_sig: location to load remote_ann_bitcoin_sig to
+ * @remote_ann_zcore_sig: location to load remote_ann_zcore_sig to
  *
  * This function is only used to save REMOTE announcement information into DB
  * when the channel has set the announce_channel bit and don't send the shutdown
@@ -623,7 +623,7 @@ bool wallet_htlcs_load_for_channel(struct wallet *wallet,
  */
 void wallet_announcement_save(struct wallet *wallet, u64 id,
 			      secp256k1_ecdsa_signature *remote_ann_node_sig,
-			      secp256k1_ecdsa_signature *remote_ann_bitcoin_sig);
+			      secp256k1_ecdsa_signature *remote_ann_zcore_sig);
 
 /* /!\ This is a DB ENUM, please do not change the numbering of any
  * already defined elements (adding is ok) /!\ */
@@ -1056,23 +1056,23 @@ bool wallet_have_block(struct wallet *w, u32 blockheight);
  */
 const struct short_channel_id *
 wallet_outpoint_spend(struct wallet *w, const tal_t *ctx, const u32 blockheight,
-		      const struct bitcoin_txid *txid, const u32 outnum);
+		      const struct zcore_txid *txid, const u32 outnum);
 
 struct outpoint *wallet_outpoint_for_scid(struct wallet *w, tal_t *ctx,
 					  const struct short_channel_id *scid);
 
-void wallet_utxoset_add(struct wallet *w, const struct bitcoin_tx *tx,
+void wallet_utxoset_add(struct wallet *w, const struct zcore_tx *tx,
 			const u32 outnum, const u32 blockheight,
 			const u32 txindex, const u8 *scriptpubkey,
 			struct amount_sat sat);
 
-void wallet_transaction_add(struct wallet *w, const struct bitcoin_tx *tx,
+void wallet_transaction_add(struct wallet *w, const struct zcore_tx *tx,
 			    const u32 blockheight, const u32 txindex);
 
-void wallet_annotate_txout(struct wallet *w, const struct bitcoin_txid *txid,
+void wallet_annotate_txout(struct wallet *w, const struct zcore_txid *txid,
 			   int outnum, enum wallet_tx_type type, u64 channel);
 
-void wallet_annotate_txin(struct wallet *w, const struct bitcoin_txid *txid,
+void wallet_annotate_txin(struct wallet *w, const struct zcore_txid *txid,
 			  int innum, enum wallet_tx_type type, u64 channel);
 
 /**
@@ -1084,7 +1084,7 @@ void wallet_annotate_txin(struct wallet *w, const struct bitcoin_txid *txid,
  * after the fact with a channel number for grouping and a type for filtering.
  */
 void wallet_transaction_annotate(struct wallet *w,
-				 const struct bitcoin_txid *txid,
+				 const struct zcore_txid *txid,
 				 enum wallet_tx_type type, u64 channel_id);
 
 /**
@@ -1094,26 +1094,26 @@ void wallet_transaction_annotate(struct wallet *w,
  * Returns false if the transaction was not stored in DB.
  * Returns true if the transaction exists and sets the `type` parameter.
  */
-bool wallet_transaction_type(struct wallet *w, const struct bitcoin_txid *txid,
+bool wallet_transaction_type(struct wallet *w, const struct zcore_txid *txid,
 			     enum wallet_tx_type *type);
 
 /**
  * Get the confirmation height of a transaction we are watching by its
  * txid. Returns 0 if the transaction was not part of any block.
  */
-u32 wallet_transaction_height(struct wallet *w, const struct bitcoin_txid *txid);
+u32 wallet_transaction_height(struct wallet *w, const struct zcore_txid *txid);
 
 /**
  * Locate a transaction in the blockchain, returns NULL if the transaction is
  * not tracked or is not yet confirmed.
  */
 struct txlocator *wallet_transaction_locate(const tal_t *ctx, struct wallet *w,
-					    const struct bitcoin_txid *txid);
+					    const struct zcore_txid *txid);
 
 /**
  * Get transaction IDs for transactions that we are tracking.
  */
-struct bitcoin_txid *wallet_transactions_by_height(const tal_t *ctx,
+struct zcore_txid *wallet_transactions_by_height(const tal_t *ctx,
 						   struct wallet *w,
 						   const u32 blockheight);
 
@@ -1121,7 +1121,7 @@ struct bitcoin_txid *wallet_transactions_by_height(const tal_t *ctx,
  * Store transactions of interest in the database to replay on restart
  */
 void wallet_channeltxs_add(struct wallet *w, struct channel *chan,
-			    const int type, const struct bitcoin_txid *txid,
+			    const int type, const struct zcore_txid *txid,
 			   const u32 input_num, const u32 blockheight);
 
 /**
@@ -1156,17 +1156,17 @@ const struct forwarding *wallet_forwarded_payments_get(struct wallet *w,
 						       const tal_t *ctx);
 
 /**
- * Load remote_ann_node_sig and remote_ann_bitcoin_sig
+ * Load remote_ann_node_sig and remote_ann_zcore_sig
  *
  * @ctx: allocation context for the return value
  * @w: wallet containing the channel
  * @id: channel database id
  * @remote_ann_node_sig: location to load remote_ann_node_sig to
- * @remote_ann_bitcoin_sig: location to load remote_ann_bitcoin_sig to
+ * @remote_ann_zcore_sig: location to load remote_ann_zcore_sig to
  */
 bool wallet_remote_ann_sigs_load(const tal_t *ctx, struct wallet *w, u64 id,
 				 secp256k1_ecdsa_signature **remote_ann_node_sig,
-				 secp256k1_ecdsa_signature **remote_ann_bitcoin_sig);
+				 secp256k1_ecdsa_signature **remote_ann_zcore_sig);
 
 /**
  * wallet_clean_utxos: clean up any reserved UTXOs on restart.
@@ -1175,13 +1175,13 @@ bool wallet_remote_ann_sigs_load(const tal_t *ctx, struct wallet *w, u64 id,
  * If we crash, it's unclear if we have actually used the inputs.  eg. if
  * we crash around transaction broadcast.
  *
- * We ask bitcoind to clarify in this case.
+ * We ask zcored to clarify in this case.
  */
-void wallet_clean_utxos(struct wallet *w, struct bitcoind *bitcoind);
+void wallet_clean_utxos(struct wallet *w, struct zcored *zcored);
 
 /* Operations for unreleased transactions */
 struct unreleased_tx *find_unreleased_tx(struct wallet *w,
-					 const struct bitcoin_txid *txid);
+					 const struct zcore_txid *txid);
 void remove_unreleased_tx(struct unreleased_tx *utx);
 void add_unreleased_tx(struct wallet *w, struct unreleased_tx *utx);
 

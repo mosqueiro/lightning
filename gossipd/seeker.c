@@ -1,5 +1,5 @@
 /* This contains the code which actively seeks out gossip from peers */
-#include <bitcoin/short_channel_id.h>
+#include <zcore/short_channel_id.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/asort/asort.h>
 #include <ccan/list/list.h>

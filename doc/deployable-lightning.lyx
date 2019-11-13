@@ -103,14 +103,14 @@ key "Poon2015Lightning"
 
 \end_inset
 
-) requires some new sighash modes in order to work with Bitcoin.
+) requires some new sighash modes in order to work with ZCore.
  This paper proposes a simplified variant which requires only modifications
- which are already proposed for bitcoin, and slightly simplifies the revocation
+ which are already proposed for zcore, and slightly simplifies the revocation
  of existing contracts.
 \end_layout
 
 \begin_layout Abstract
-Keywords: bitcoin, lightning, revocation hash, HTLC, BIP62, BIP65, BIP68
+Keywords: zcore, lightning, revocation hash, HTLC, BIP62, BIP65, BIP68
 \end_layout
 
 \begin_layout Section
@@ -118,10 +118,10 @@ Introduction
 \end_layout
 
 \begin_layout Standard
-The Bitcoin network
+The ZCore network
 \begin_inset CommandInset citation
 LatexCommand cite
-key "nakamoto2008bitcoin"
+key "nakamoto2008zcore"
 
 \end_inset
 
@@ -130,7 +130,7 @@ key "nakamoto2008bitcoin"
 transactions.
 
 \emph default
- Each bitcoin transaction consists of one or more 
+ Each zcore transaction consists of one or more 
 \emph on
 outputs
 \emph default
@@ -173,13 +173,13 @@ Previous Work
 \end_layout
 
 \begin_layout Standard
-To work around the bitcoin network's delays and fees, several forms of 
+To work around the zcore network's delays and fees, several forms of 
 \emph on
 off-chain
 \emph default
  transaction patterns have been developed, where series of transactions
  are sent directly between two parties, with only the initial opening transactio
-n and final redemption transaction being included in the bitcoin blockchain.
+n and final redemption transaction being included in the zcore blockchain.
 \end_layout
 
 \begin_layout Standard
@@ -207,7 +207,7 @@ DER encoding adds unnecessary bytes and is a cause of malleability
 \end_inset
 
  but that is precisely why it's a matter for longer term research and unlikely
- to be deployed in Bitcoin in the immediate future.
+ to be deployed in ZCore in the immediate future.
 \end_layout
 
 \begin_layout Subsection
@@ -223,7 +223,7 @@ payment channels
  several years
 \begin_inset CommandInset citation
 LatexCommand cite
-key "BitcoinChannels"
+key "ZCoreChannels"
 
 \end_inset
 
@@ -375,7 +375,7 @@ malleability.
 \end_layout
 
 \begin_layout Standard
-This last issue is a common one with complex bitcoin transactions, and BIP62
+This last issue is a common one with complex zcore transactions, and BIP62
 \begin_inset CommandInset citation
 LatexCommand cite
 key "BIP62"
@@ -659,7 +659,7 @@ relative
  time before the output can be spent
 \begin_inset CommandInset citation
 LatexCommand cite
-key "friedenbach_bitcoin-development_2015,BIP112"
+key "friedenbach_zcore-development_2015,BIP112"
 
 \end_inset
 
@@ -710,7 +710,7 @@ A's signature and OP_CHECKSEQUENCEVERIFY <1 day>
 \end_layout
 
 \begin_layout Standard
-This can be expressed fairly easily in bitcoin's script-based scripting
+This can be expressed fairly easily in zcore's script-based scripting
  language, as annotated in 
 \begin_inset CommandInset ref
 LatexCommand nameref
@@ -801,7 +801,7 @@ The last of these is particularly pernicious, as BIP62 doesn't solve it:
 \begin_layout Standard
 Our approach is to only have one-sided anchors.
  These can be later balanced by the lightning network itself, or an atomic-swap
- to an on-chain bitcoin transaction
+ to an on-chain zcore transaction
 \begin_inset CommandInset citation
 LatexCommand cite
 key "go1111111_single_anchor"
@@ -809,7 +809,7 @@ key "go1111111_single_anchor"
 \end_inset
 
 .
- Any bitcoin transaction fees are initially funded by that anchor, but the
+ Any zcore transaction fees are initially funded by that anchor, but the
  implementation splits fees where possible and never allows either side
  to spend funds in the channel if they would no longer be able to pay their
  share.
@@ -941,7 +941,7 @@ Acknowlegments
 \end_layout
 
 \begin_layout Standard
-Thanks to mmeijeri on Reddit's r/Bitcoin for pointing out a flaw in escape
+Thanks to mmeijeri on Reddit's r/ZCore for pointing out a flaw in escape
  transactions reusing the same A and B keys as the commitment transaction
  in 
 \begin_inset CommandInset ref
@@ -955,7 +955,7 @@ reference "sec:Appendix-B:-Dual"
 status open
 
 \begin_layout Plain Layout
-https://www.reddit.com/r/Bitcoin/comments/3dlxw4/reaching_the_ground_with_lightnin
+https://www.reddit.com/r/ZCore/comments/3dlxw4/reaching_the_ground_with_lightnin
 g_lightning/ct80xpp
 \end_layout
 
@@ -976,7 +976,7 @@ Thanks to Joseph Poon for designing the escape/fast-escape dual-anchor method,
 \begin_layout Standard
 \begin_inset CommandInset bibtex
 LatexCommand bibtex
-bibfiles "bitcoin"
+bibfiles "zcore"
 options "bibtotoc,plain"
 
 \end_inset
@@ -1526,7 +1526,7 @@ name "sec:Appendix-B:-Dual"
 
 \begin_layout Standard
 This appendix presents a dual-input anchor solution which doesn't require
- additional bitcoin signature flags.
+ additional zcore signature flags.
  It is not being proposed currently, as it seems that a single-sided anchor
  is probably sufficient.
 \end_layout

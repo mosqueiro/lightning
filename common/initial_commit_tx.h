@@ -2,13 +2,13 @@
 #ifndef LIGHTNING_COMMON_INITIAL_COMMIT_TX_H
 #define LIGHTNING_COMMON_INITIAL_COMMIT_TX_H
 #include "config.h"
-#include <bitcoin/chainparams.h>
-#include <bitcoin/pubkey.h>
+#include <zcore/chainparams.h>
+#include <zcore/pubkey.h>
 #include <common/amount.h>
 #include <common/htlc.h>
 #include <common/utils.h>
 
-struct bitcoin_txid;
+struct zcore_txid;
 struct keyset;
 
 /* BOLT #3:
@@ -45,7 +45,7 @@ static inline struct amount_sat commit_tx_base_fee(u32 feerate_per_kw,
 
 	if (chainparams->is_elements) {
 		/* Each transaction has surjection and rangeproof (both empty
-		 * for us as long as we use unblinded L-BTC transactions). */
+		 * for us as long as we use unblinded L-ZCR transactions). */
 		weight += 2 * 4;
 
 		/* Inputs have 6 bytes of blank proofs attached. This TX only
@@ -60,7 +60,7 @@ static inline struct amount_sat commit_tx_base_fee(u32 feerate_per_kw,
 
 		/* For elements we also need to add the fee output and the
 		 * overhead for rangeproofs into the mix. */
-		weight += (8 + 1) * 4; /* Bitcoin style output */
+		weight += (8 + 1) * 4; /* ZCore style output */
 		weight += (32 + 1 + 1 + 1) * 4; /* Elements added fields */
 	}
 
@@ -92,9 +92,9 @@ static inline struct amount_sat commit_tx_base_fee(u32 feerate_per_kw,
  * but the BOLT is expressed in terms of generating our local commitment
  * transaction, so we carefully use the terms "self" and "other" here.
  */
-struct bitcoin_tx *initial_commit_tx(const tal_t *ctx,
+struct zcore_tx *initial_commit_tx(const tal_t *ctx,
 				     const struct chainparams *chainparams,
-				     const struct bitcoin_txid *funding_txid,
+				     const struct zcore_txid *funding_txid,
 				     unsigned int funding_txout,
 				     struct amount_sat funding,
 				     enum side funder,

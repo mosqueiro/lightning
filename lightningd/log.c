@@ -528,7 +528,7 @@ char *arg_log_to_file(const char *arg, struct lightningd *ld)
 		return tal_fmt(NULL, "Failed to open: %s", strerror(errno));
 	set_log_outfn(ld->log->lr, log_to_file, logf);
 
-	/* For convenience make a block of empty lines just like Bitcoin Core */
+	/* For convenience make a block of empty lines just like ZCore Core */
 	size = ftell(logf);
 	if (size > 0)
 		fprintf(logf, "\n\n\n\n");

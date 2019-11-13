@@ -5,7 +5,7 @@
 #ifndef LIGHTNING_LIGHTNINGD_JSON_H
 #define LIGHTNING_LIGHTNINGD_JSON_H
 #include "config.h"
-#include <bitcoin/privkey.h>
+#include <zcore/privkey.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/tal/tal.h>
 #include <ccan/time/time.h>
@@ -17,8 +17,8 @@
 #define JSMN_STRICT 1
 # include <external/jsmn/jsmn.h>
 
-struct bitcoin_tx;
-struct bitcoin_txid;
+struct zcore_tx;
+struct zcore_txid;
 struct chainparams;
 struct channel_id;
 struct command;
@@ -55,7 +55,7 @@ void json_add_node_id(struct json_stream *response,
 
 /* '"fieldname" : <hexrev>' or "<hexrev>" if fieldname is NULL */
 void json_add_txid(struct json_stream *result, const char *fieldname,
-		   const struct bitcoin_txid *txid);
+		   const struct zcore_txid *txid);
 
 struct command_result *param_pubkey(struct command *cmd, const char *name,
 				    const char *buffer, const jsmntok_t *tok,
@@ -63,7 +63,7 @@ struct command_result *param_pubkey(struct command *cmd, const char *name,
 
 struct command_result *param_txid(struct command *cmd, const char *name,
 				  const char *buffer, const jsmntok_t *tok,
-				  struct bitcoin_txid **txid);
+				  struct zcore_txid **txid);
 
 struct command_result *param_short_channel_id(struct command *cmd,
 					      const char *name,
@@ -157,7 +157,7 @@ void json_add_hex_talarr(struct json_stream *result,
 /* '"fieldname" : "010000000001..."' or "010000000001..." if fieldname is NULL */
 void json_add_tx(struct json_stream *result,
 		 const char *fieldname,
-		 const struct bitcoin_tx *tx);
+		 const struct zcore_tx *tx);
 
 /* Adds both a 'raw' number field and an 'amount_msat' field */
 void json_add_amount_msat_compat(struct json_stream *result,
@@ -211,7 +211,7 @@ void json_add_time(struct json_stream *result, const char *fieldname,
 void json_add_sha256(struct json_stream *result, const char *fieldname,
 		     const struct sha256 *hash);
 
-struct command_result *param_bitcoin_address(struct command *cmd,
+struct command_result *param_zcore_address(struct command *cmd,
 					     const char *name,
 					     const char *buffer,
 					     const jsmntok_t *tok,

@@ -31,14 +31,14 @@ Here's a list of parts, with notes:
   - Use make update-ccan CCAN_NEW="mod1 mod2..." to add modules
   - Do not edit this!  If you want a wrapper, add one to common/utils.h.
 
-* bitcoin/ - bitcoin script, signature and transaction routines.
+* zcore/ - zcore script, signature and transaction routines.
   - Not a complete set, but enough for our purposes.
 
 * external/ - external libraries from other sources
   - libbacktrace - library to provide backtraces when things go wrong.
   - libsodium - encryption library (should be replaced soon with built-in)
-  - libwally-core - bitcoin helper library
-  - secp256k1 - bitcoin curve encryption library within libwally-core
+  - libwally-core - zcore helper library
+  - secp256k1 - zcore curve encryption library within libwally-core
   - jsmn - tiny JSON parsing helper
 
 * tools/ - tools for building

@@ -20,7 +20,7 @@ or
 It supports the any number of outputs\.
 
 
-The \fIdestination\fR of output is the address which can be of any Bitcoin accepted
+The \fIdestination\fR of output is the address which can be of any ZCore accepted
 type, including bech32\.
 
 
@@ -39,7 +39,7 @@ is the default\.
 
 Otherwise, \fIfeerate\fR is a number, with an optional suffix: \fIperkw\fR means
 the number is interpreted as satoshi-per-kilosipa (weight), and \fIperkb\fR
-means it is interpreted bitcoind-style as satoshi-per-kilobyte\. Omitting
+means it is interpreted zcored-style as satoshi-per-kilobyte\. Omitting
 the suffix is equivalent to \fIperkb\fR\.
 
 
@@ -64,8 +64,8 @@ inputs of this transaction are reserved until then, or until the daemon
 restarts\.
 
 
-\fIunsigned_tx\fR represents the raw bitcoin transaction (not yet signed)
-and \fItxid\fR represent the bitcoin transaction id\.
+\fIunsigned_tx\fR represents the raw zcore transaction (not yet signed)
+and \fItxid\fR represent the zcore transaction id\.
 
 
 On failure, an error is reported and the transaction is not created\.

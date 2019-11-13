@@ -1,5 +1,5 @@
-#include <bitcoin/preimage.h>
-#include <bitcoin/tx.h>
+#include <zcore/preimage.h>
+#include <zcore/tx.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/cast/cast.h>
 #include <ccan/crypto/ripemd160/ripemd160.h>
@@ -453,7 +453,7 @@ enum onion_type send_htlc_out(struct channel *out,
 
 	if (!topology_synced(out->peer->ld->topology)) {
 		log_info(out->log, "Attempt to send HTLC but still syncing"
-			 " with bitcoin network");
+			 " with zcore network");
 		return WIRE_TEMPORARY_CHANNEL_FAILURE;
 	}
 
@@ -1238,21 +1238,21 @@ static bool changed_htlc(struct channel *channel,
 /* FIXME: This should be a complete check, not just a sanity check.
  * Perhaps that means we need a cookie from the HSM? */
 static bool valid_commitment_tx(struct channel *channel,
-				const struct bitcoin_tx *tx)
+				const struct zcore_tx *tx)
 {
 	/* We've had past issues where all outputs are trimmed. */
 	if (tx->wtx->num_outputs == 0) {
 		channel_internal_error(channel,
 				       "channel_got_commitsig: zero output tx! %s",
-				       type_to_string(tmpctx, struct bitcoin_tx, tx));
+				       type_to_string(tmpctx, struct zcore_tx, tx));
 		return false;
 	}
 	return true;
 }
 
 static bool peer_save_commitsig_received(struct channel *channel, u64 commitnum,
-					 struct bitcoin_tx *tx,
-					 const struct bitcoin_signature *commit_sig)
+					 struct zcore_tx *tx,
+					 const struct zcore_signature *commit_sig)
 {
 	if (commitnum != channel->next_index[LOCAL]) {
 		channel_internal_error(channel,
@@ -1299,7 +1299,7 @@ void peer_sending_commitsig(struct channel *channel, const u8 *msg)
 	u32 feerate;
 	struct changed_htlc *changed_htlcs;
 	size_t i, maxid = 0, num_local_added = 0;
-	struct bitcoin_signature commit_sig;
+	struct zcore_signature commit_sig;
 	secp256k1_ecdsa_signature *htlc_sigs;
 	struct lightningd *ld = channel->peer->ld;
 
@@ -1470,18 +1470,18 @@ void peer_got_commitsig(struct channel *channel, const u8 *msg)
 {
 	u64 commitnum;
 	u32 feerate;
-	struct bitcoin_signature commit_sig;
+	struct zcore_signature commit_sig;
 	secp256k1_ecdsa_signature *htlc_sigs;
 	struct added_htlc *added;
 	struct secret *shared_secrets;
 	struct fulfilled_htlc *fulfilled;
 	struct failed_htlc **failed;
 	struct changed_htlc *changed;
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	size_t i;
 	struct lightningd *ld = channel->peer->ld;
 
-	/* If we're not synced with bitcoin network, we can't accept
+	/* If we're not synced with zcore network, we can't accept
 	 * any HTLCs.  We stall at this point, in the hope that it
 	 * won't take long! */
 	if (!topology_synced(ld->topology)) {

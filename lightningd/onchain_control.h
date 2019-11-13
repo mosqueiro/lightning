@@ -6,11 +6,11 @@
 #include <onchaind/gen_onchain_wire.h>
 
 struct channel;
-struct bitcoin_tx;
+struct zcore_tx;
 struct block;
 
 enum watch_result onchaind_funding_spent(struct channel *channel,
-					 const struct bitcoin_tx *tx,
+					 const struct zcore_tx *tx,
 					 u32 blockheight);
 
 void onchaind_replay_channels(struct lightningd *ld);

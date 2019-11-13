@@ -1,4 +1,4 @@
-#include <bitcoin/short_channel_id.h>
+#include <zcore/short_channel_id.h>
 #include <ccan/crc32c/crc32c.h>
 #include <ccan/err/err.h>
 #include <ccan/opt/opt.h>
@@ -66,7 +66,7 @@ static void write_outmsg(int outfd, const u8 *outmsg, u32 timestamp)
 static u32 get_update_timestamp(const u8 *msg, struct short_channel_id *scid)
 {
 	secp256k1_ecdsa_signature sig;
-	struct bitcoin_blkid chain_hash;
+	struct zcore_blkid chain_hash;
 	u32 timestamp;
 	u8 u8_ignore;
 	u16 u16_ignore;
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 				/* We ignore these; we just want scid */
 				secp256k1_ecdsa_signature sig;
 				u8 *features;
-				struct bitcoin_blkid hash;
+				struct zcore_blkid hash;
 				struct node_id id;
 				struct pubkey pubkey;
 

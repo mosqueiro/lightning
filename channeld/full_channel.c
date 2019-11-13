@@ -1,8 +1,8 @@
 #include <assert.h>
-#include <bitcoin/chainparams.h>
-#include <bitcoin/preimage.h>
-#include <bitcoin/script.h>
-#include <bitcoin/tx.h>
+#include <zcore/chainparams.h>
+#include <zcore/preimage.h>
+#include <zcore/script.h>
+#include <zcore/tx.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/mem/mem.h>
 #include <ccan/tal/str/str.h>
@@ -33,8 +33,8 @@ static void memleak_help_htlcmap(struct htable *memtable,
 #endif /* DEVELOPER */
 
 struct channel *new_full_channel(const tal_t *ctx,
-				 const struct bitcoin_blkid *chain_hash,
-				 const struct bitcoin_txid *funding_txid,
+				 const struct zcore_blkid *chain_hash,
+				 const struct zcore_txid *funding_txid,
 				 unsigned int funding_txout,
 				 u32 minimum_depth,
 				 struct amount_sat funding,
@@ -200,7 +200,7 @@ static bool sum_offered_msatoshis(struct amount_msat *total,
 }
 
 static void add_htlcs(const struct chainparams *chainparams,
-		      struct bitcoin_tx ***txs,
+		      struct zcore_tx ***txs,
 		      const u8 ***wscripts,
 		      const struct htlc **htlcmap,
 		      const struct channel *channel,
@@ -208,15 +208,15 @@ static void add_htlcs(const struct chainparams *chainparams,
 		      enum side side)
 {
 	size_t i;
-	struct bitcoin_txid txid;
+	struct zcore_txid txid;
 	u32 feerate_per_kw = channel->view[side].feerate_per_kw;
 
 	/* Get txid of commitment transaction */
-	bitcoin_txid((*txs)[0], &txid);
+	zcore_txid((*txs)[0], &txid);
 
 	for (i = 0; i < tal_count(htlcmap); i++) {
 		const struct htlc *htlc = htlcmap[i];
-		struct bitcoin_tx *tx;
+		struct zcore_tx *tx;
 		u8 *wscript;
 
 		if (!htlc)
@@ -229,7 +229,7 @@ static void add_htlcs(const struct chainparams *chainparams,
 					     channel->config[!side].to_self_delay,
 					     feerate_per_kw,
 					     keyset);
-			wscript	= bitcoin_wscript_htlc_offer(*wscripts,
+			wscript	= zcore_wscript_htlc_offer(*wscripts,
 						     &keyset->self_htlc_key,
 						     &keyset->other_htlc_key,
 						     &htlc->rhash,
@@ -240,7 +240,7 @@ static void add_htlcs(const struct chainparams *chainparams,
 					     channel->config[!side].to_self_delay,
 					     feerate_per_kw,
 					     keyset);
-			wscript	= bitcoin_wscript_htlc_receive(*wscripts,
+			wscript	= zcore_wscript_htlc_receive(*wscripts,
 						       &htlc->expiry,
 						       &keyset->self_htlc_key,
 						       &keyset->other_htlc_key,
@@ -257,7 +257,7 @@ static void add_htlcs(const struct chainparams *chainparams,
 }
 
 /* FIXME: We could cache these. */
-struct bitcoin_tx **channel_txs(const tal_t *ctx,
+struct zcore_tx **channel_txs(const tal_t *ctx,
 				const struct chainparams *chainparams,
 				const struct htlc ***htlcmap,
 				const u8 ***wscripts,
@@ -266,7 +266,7 @@ struct bitcoin_tx **channel_txs(const tal_t *ctx,
 				u64 commitment_number,
 				enum side side)
 {
-	struct bitcoin_tx **txs;
+	struct zcore_tx **txs;
 	const struct htlc **committed;
 	struct keyset keyset;
 
@@ -280,7 +280,7 @@ struct bitcoin_tx **channel_txs(const tal_t *ctx,
 	/* Figure out what @side will already be committed to. */
 	gather_htlcs(ctx, channel, side, &committed, NULL, NULL);
 
-	txs = tal_arr(ctx, struct bitcoin_tx *, 1);
+	txs = tal_arr(ctx, struct zcore_tx *, 1);
 	txs[0] = commit_tx(
 	    ctx, chainparams, &channel->funding_txid, channel->funding_txout,
 	    channel->funding, channel->funder,
@@ -291,7 +291,7 @@ struct bitcoin_tx **channel_txs(const tal_t *ctx,
 	    commitment_number ^ channel->commitment_number_obscurer, side);
 
 	*wscripts = tal_arr(ctx, const u8 *, 1);
-	(*wscripts)[0] = bitcoin_redeem_2of2(*wscripts,
+	(*wscripts)[0] = zcore_redeem_2of2(*wscripts,
 					     &channel->funding_pubkey[side],
 					     &channel->funding_pubkey[!side]);
 
@@ -442,7 +442,7 @@ static enum channel_add_err add_htlc(struct channel *channel,
 	 *
 	 * A sending node:
 	 *...
-	 * - for channels with `chain_hash` identifying the Bitcoin blockchain:
+	 * - for channels with `chain_hash` identifying the ZCore blockchain:
 	 *    - MUST set the four most significant bytes of `amount_msat` to 0.
 	 */
 	if (sender == LOCAL

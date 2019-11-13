@@ -1,5 +1,5 @@
 #include "addr.h"
-#include <bitcoin/script.h>
+#include <zcore/script.h>
 #include <common/bech32.h>
 
 /* Returns NULL if the script is not a P2WPKH or P2WSH */

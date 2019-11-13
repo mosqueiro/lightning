@@ -1,8 +1,8 @@
-/* More specialized (bitcoin, lightning-specific) JSON helpers. */
+/* More specialized (zcore, lightning-specific) JSON helpers. */
 #ifndef LIGHTNING_COMMON_JSON_HELPERS_H
 #define LIGHTNING_COMMON_JSON_HELPERS_H
 #include "config.h"
-#include <bitcoin/tx.h>
+#include <zcore/tx.h>
 #include <common/json.h>
 #include <wire/wire.h>
 
@@ -21,7 +21,7 @@ bool json_to_node_id(const char *buffer, const jsmntok_t *tok,
 			       struct node_id *id);
 
 /* Extract satoshis from this (may be a string, or a decimal number literal) */
-bool json_to_bitcoin_amount(const char *buffer, const jsmntok_t *tok,
+bool json_to_zcore_amount(const char *buffer, const jsmntok_t *tok,
 			    uint64_t *satoshi);
 
 /* Extract a short_channel_id from this */
@@ -41,9 +41,9 @@ bool json_to_sat_or_all(const char *buffer, const jsmntok_t *tok,
 bool json_to_msat(const char *buffer, const jsmntok_t *tok,
 		  struct amount_msat *msat);
 
-/* Extract a bitcoin txid from this */
+/* Extract a zcore txid from this */
 bool json_to_txid(const char *buffer, const jsmntok_t *tok,
-		  struct bitcoin_txid *txid);
+		  struct zcore_txid *txid);
 
 /* Extract a channel id from this */
 bool json_to_channel_id(const char *buffer, const jsmntok_t *tok,

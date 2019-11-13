@@ -1,5 +1,5 @@
-#include <bitcoin/chainparams.c>
-#include <bitcoin/script.h>
+#include <zcore/chainparams.c>
+#include <zcore/script.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/json_out/json_out.h>
 #include <ccan/tal/str/str.h>
@@ -27,7 +27,7 @@ struct funding_req {
 	u32 *minconf;
 
 	/* The prepared tx id */
-	struct bitcoin_txid tx_id;
+	struct zcore_txid tx_id;
 
 	const char *chanstr;
 	const u8 *out_script;
@@ -96,7 +96,7 @@ static struct command_result *tx_abort(struct command *cmd,
 	ret = json_out_new(NULL);
 	json_out_start(ret, NULL,  '{');
 	json_out_addstr(ret, "txid",
-			type_to_string(tmpctx, struct bitcoin_txid, &fr->tx_id));
+			type_to_string(tmpctx, struct zcore_txid, &fr->tx_id));
 	json_out_end(ret, '}');
 
 	/* We need to call txdiscard, and forward the actual cause for the
@@ -120,7 +120,7 @@ static struct command_result *finish(struct command *cmd,
 	json_out_start(out, NULL, '{');
 	copy_member(out, buf, result, "tx");
 	json_out_addstr(out, "txid",
-			type_to_string(tmpctx, struct bitcoin_txid, &fr->tx_id));
+			type_to_string(tmpctx, struct zcore_txid, &fr->tx_id));
 	json_out_addstr(out, "channel_id", fr->chanstr);
 	json_out_end(out, '}');
 
@@ -151,7 +151,7 @@ static struct command_result *send_tx(struct command *cmd,
 	ret = json_out_new(NULL);
 	json_out_start(ret, NULL, '{');
 	json_out_addstr(ret, "txid",
-			type_to_string(tmpctx, struct bitcoin_txid, &fr->tx_id));
+			type_to_string(tmpctx, struct zcore_txid, &fr->tx_id));
 	json_out_end(ret, '}');
 
 	return send_outreq(cmd, "txsend",
@@ -167,7 +167,7 @@ static struct command_result *tx_prepare_done(struct command *cmd,
 	const jsmntok_t *txid_tok;
 	const jsmntok_t *tx_tok;
 	struct json_out *ret;
-	const struct bitcoin_tx *tx;
+	const struct zcore_tx *tx;
 	const char *hex;
 	u32 outnum;
 	bool outnum_found;
@@ -181,14 +181,14 @@ static struct command_result *tx_prepare_done(struct command *cmd,
 		plugin_err("txprepare missing 'unsigned_tx' field");
 
 	hex = json_strdup(tmpctx, buf, tx_tok);
-	tx = bitcoin_tx_from_hex(fr, hex, strlen(hex));
+	tx = zcore_tx_from_hex(fr, hex, strlen(hex));
 	if (!tx)
 		plugin_err("Unable to parse tx %s", hex);
 
 	/* Find the txout */
 	outnum_found = false;
 	for (size_t i = 0; i < tx->wtx->num_outputs; i++) {
-		const u8 *output_script = bitcoin_tx_output_get_script(fr, tx, i);
+		const u8 *output_script = zcore_tx_output_get_script(fr, tx, i);
 		if (scripteq(output_script, fr->out_script)) {
 			outnum = i;
 			outnum_found = true;
@@ -198,11 +198,11 @@ static struct command_result *tx_prepare_done(struct command *cmd,
 	if (!outnum_found)
 		plugin_err("txprepare doesn't include our funding output. "
 			   "tx: %s, output: %s",
-			   type_to_string(tmpctx, struct bitcoin_tx, tx),
+			   type_to_string(tmpctx, struct zcore_tx, tx),
 			   tal_hex(tmpctx, fr->out_script));
 
 	hex = json_strdup(tmpctx, buf, txid_tok);
-	if (!bitcoin_txid_from_hex(hex, strlen(hex), &fr->tx_id))
+	if (!zcore_txid_from_hex(hex, strlen(hex), &fr->tx_id))
 		plugin_err("Unable to parse txid %s", hex);
 
 	ret = json_out_new(NULL);
@@ -297,7 +297,7 @@ static struct command_result *fundchannel_start_done(struct command *cmd,
 	ret = json_out_new(NULL);
 	json_out_start(ret, NULL,  '{');
 	json_out_addstr(ret, "txid",
-			type_to_string(tmpctx, struct bitcoin_txid, &fr->tx_id));
+			type_to_string(tmpctx, struct zcore_txid, &fr->tx_id));
 	json_out_end(ret, '}');
 
 	return send_outreq(cmd, "txdiscard",
@@ -339,7 +339,7 @@ static struct command_result *tx_prepare_dryrun(struct command *cmd,
 						const jsmntok_t *result,
 						struct funding_req *fr)
 {
-	struct bitcoin_tx *tx;
+	struct zcore_tx *tx;
 	const char *hex;
 	struct amount_sat funding;
 	bool funding_found;
@@ -348,19 +348,19 @@ static struct command_result *tx_prepare_dryrun(struct command *cmd,
 
 	/* Stash the 'reserved' txid to unreserve later */
 	hex = json_strdup(tmpctx, buf, json_get_member(buf, result, "txid"));
-	if (!bitcoin_txid_from_hex(hex, strlen(hex), &fr->tx_id))
+	if (!zcore_txid_from_hex(hex, strlen(hex), &fr->tx_id))
 		plugin_err("Unable to parse reserved txid %s", hex);
 
 
 	hex = json_strdup(tmpctx, buf, json_get_member(buf, result, "unsigned_tx"));
-	tx = bitcoin_tx_from_hex(fr, hex, strlen(hex));
+	tx = zcore_tx_from_hex(fr, hex, strlen(hex));
 	tx->chainparams = chainparams;
 
 	/* Find the funding amount */
 	funding_found = false;
 	for (size_t i = 0; i < tx->wtx->num_outputs; i++) {
-		const u8 *output_script = bitcoin_tx_output_get_script(tmpctx, tx, i);
-		asset = bitcoin_tx_output_get_amount(tx, i);
+		const u8 *output_script = zcore_tx_output_get_script(tmpctx, tx, i);
+		asset = zcore_tx_output_get_amount(tx, i);
 
 		/* We do not support funding a channel with anything but the
 		 * main asset, for now. */

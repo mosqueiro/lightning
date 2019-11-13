@@ -1,5 +1,5 @@
 #! /bin/sh
-# Needs bitcoind -regtest running.
+# Needs zcored -regtest running.
 
 set -e
 
@@ -24,8 +24,8 @@ wait_for_start()
 	    exit 1
 	fi
     done
-    # Wait for it to catch up with bitcoind.
-    while [ "$($LCLI1 -H getinfo | grep '^blockheight=' | cut -d= -f2)" != "$(bitcoin-cli -regtest getblockcount)" ]; do sleep 1; done
+    # Wait for it to catch up with zcored.
+    while [ "$($LCLI1 -H getinfo | grep '^blockheight=' | cut -d= -f2)" != "$(zcore-cli -regtest getblockcount)" ]; do sleep 1; done
     echo "$ID"
 }
 
@@ -72,10 +72,10 @@ else
     TARGETS="$TARGETS "
 fi
 
-if ! bitcoin-cli -regtest ping >/dev/null 2>&1; then
-    bitcoind -regtest > "$DIR"/bitcoind.log &
+if ! zcore-cli -regtest ping >/dev/null 2>&1; then
+    zcored -regtest > "$DIR"/zcored.log &
 
-    while ! bitcoin-cli -regtest ping >/dev/null 2>&1; do sleep 1; done
+    while ! zcore-cli -regtest ping >/dev/null 2>&1; do sleep 1; done
 fi
 
 DEVELOPER=$(grep '^DEVELOPER=' config.vars | cut -d= -f2-)

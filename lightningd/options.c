@@ -1,4 +1,4 @@
-#include <bitcoin/chainparams.h>
+#include <zcore/chainparams.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/err/err.h>
 #include <ccan/json_escape/json_escape.h>
@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
-#include <lightningd/bitcoind.h>
+#include <lightningd/zcored.h>
 #include <lightningd/chaintopology.h>
 #include <lightningd/json.h>
 #include <lightningd/jsonrpc.h>
@@ -257,8 +257,8 @@ static char *opt_set_network(const char *arg, struct lightningd *ld)
 	/* Set the global chainparams instance */
 	chainparams = chainparams_for_network(arg);
 
-	ld->topology->bitcoind->chainparams = chainparams;
-	if (!ld->topology->bitcoind->chainparams)
+	ld->topology->zcored->chainparams = chainparams;
+	if (!ld->topology->zcored->chainparams)
 		return tal_fmt(NULL, "Unknown network name '%s'", arg);
 	return NULL;
 }
@@ -275,7 +275,7 @@ static char *opt_set_signet(struct lightningd *ld)
 
 static char *opt_set_mainnet(struct lightningd *ld)
 {
-	return opt_set_network("bitcoin", ld);
+	return opt_set_network("zcore", ld);
 }
 
 static void opt_show_network(char buf[OPT_SHOW_LEN],
@@ -502,7 +502,7 @@ static void dev_register_opts(struct lightningd *ld)
 	opt_register_noarg("--dev-allow-localhost", opt_set_bool,
 			   &ld->dev_allow_localhost,
 			   "Announce and allow announcments for localhost address");
-	opt_register_arg("--dev-bitcoind-poll", opt_set_u32, opt_show_u32,
+	opt_register_arg("--dev-zcored-poll", opt_set_u32, opt_show_u32,
 			 &ld->topology->poll_seconds,
 			 "Time between polling for new transactions");
 	opt_register_arg("--dev-max-fee-multiplier", opt_set_u32, opt_show_u32,
@@ -582,7 +582,7 @@ static const struct config testnet_config = {
 
 	.use_dns = true,
 
-	/* Sets min_effective_htlc_capacity - at 1000$/BTC this is 10ct */
+	/* Sets min_effective_htlc_capacity - at 1000$/ZCR this is 10ct */
 	.min_capacity_sat = 10000,
 
 	.use_v3_autotor = true,
@@ -643,7 +643,7 @@ static const struct config mainnet_config = {
 
 	.use_dns = true,
 
-	/* Sets min_effective_htlc_capacity - at 1000$/BTC this is 10ct */
+	/* Sets min_effective_htlc_capacity - at 1000$/ZCR this is 10ct */
 	.min_capacity_sat = 10000,
 
 	.use_v3_autotor = true,
@@ -813,7 +813,7 @@ static char *opt_lightningd_usage(struct lightningd *ld)
 	/* Reload config so that --help has the correct network defaults
 	 * to display before it exits */
 	setup_default_config(ld);
-	char *extra = tal_fmt(NULL, "\nA bitcoin lightning daemon (default "
+	char *extra = tal_fmt(NULL, "\nA zcore lightning daemon (default "
 			"values shown for network: %s).",
 	                get_chainparams(ld)->network_name);
 	opt_usage_and_exit(extra);
@@ -947,14 +947,14 @@ static void register_opts(struct lightningd *ld)
 	 * options can change) */
 	opt_register_early_arg("--network", opt_set_network, opt_show_network,
 			       ld,
-			       "Select the network parameters (bitcoin, testnet,"
+			       "Select the network parameters (zcore, testnet,"
 			       " regtest, litecoin or litecoin-testnet)");
 	opt_register_early_noarg("--testnet", opt_set_testnet, ld,
 				 "Alias for --network=testnet");
 	opt_register_early_noarg("--signet", opt_set_signet, ld,
 				 "Alias for --network=signet");
 	opt_register_early_noarg("--mainnet", opt_set_mainnet, ld,
-				 "Alias for --network=bitcoin");
+				 "Alias for --network=zcore");
 
 	/* This can effect commandline parsing */
 	opt_register_early_arg("--allow-deprecated-apis",
@@ -976,33 +976,33 @@ static void register_opts(struct lightningd *ld)
 			 "Set JSON-RPC socket (or /dev/tty)");
 	opt_register_noarg("--help|-h", opt_lightningd_usage, ld,
 				 "Print this message.");
-	opt_register_arg("--bitcoin-datadir", opt_set_talstr, NULL,
-			 &ld->topology->bitcoind->datadir,
-			 "-datadir arg for bitcoin-cli");
+	opt_register_arg("--zcore-datadir", opt_set_talstr, NULL,
+			 &ld->topology->zcored->datadir,
+			 "-datadir arg for zcore-cli");
 	opt_register_arg("--rgb", opt_set_rgb, NULL, ld,
 			 "RRGGBB hex color for node");
 	opt_register_arg("--alias", opt_set_alias, NULL, ld,
 			 "Up to 32-byte alias for node");
 
-	opt_register_arg("--bitcoin-cli", opt_set_talstr, NULL,
-			 &ld->topology->bitcoind->cli,
-			 "bitcoin-cli pathname");
-	opt_register_arg("--bitcoin-rpcuser", opt_set_talstr, NULL,
-			 &ld->topology->bitcoind->rpcuser,
-			 "bitcoind RPC username");
-	opt_register_arg("--bitcoin-rpcpassword", opt_set_talstr, NULL,
-			 &ld->topology->bitcoind->rpcpass,
-			 "bitcoind RPC password");
-	opt_register_arg("--bitcoin-rpcconnect", opt_set_talstr, NULL,
-			 &ld->topology->bitcoind->rpcconnect,
-			 "bitcoind RPC host to connect to");
-	opt_register_arg("--bitcoin-rpcport", opt_set_talstr, NULL,
-			 &ld->topology->bitcoind->rpcport,
-			 "bitcoind RPC port");
-	opt_register_arg("--bitcoin-retry-timeout",
+	opt_register_arg("--zcore-cli", opt_set_talstr, NULL,
+			 &ld->topology->zcored->cli,
+			 "zcore-cli pathname");
+	opt_register_arg("--zcore-rpcuser", opt_set_talstr, NULL,
+			 &ld->topology->zcored->rpcuser,
+			 "zcored RPC username");
+	opt_register_arg("--zcore-rpcpassword", opt_set_talstr, NULL,
+			 &ld->topology->zcored->rpcpass,
+			 "zcored RPC password");
+	opt_register_arg("--zcore-rpcconnect", opt_set_talstr, NULL,
+			 &ld->topology->zcored->rpcconnect,
+			 "zcored RPC host to connect to");
+	opt_register_arg("--zcore-rpcport", opt_set_talstr, NULL,
+			 &ld->topology->zcored->rpcport,
+			 "zcored RPC port");
+	opt_register_arg("--zcore-retry-timeout",
 			 opt_set_u64, opt_show_u64,
-			 &ld->topology->bitcoind->retry_timeout,
-			 "how long to keep trying to contact bitcoind "
+			 &ld->topology->zcored->retry_timeout,
+			 "how long to keep trying to contact zcored "
 			 "before fatally exiting");
 
 	opt_register_arg("--pid-file=<file>", opt_set_talstr, opt_show_charp,

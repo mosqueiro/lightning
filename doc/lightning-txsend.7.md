@@ -17,10 +17,10 @@ RETURN VALUE
 
 On success, an object with attributes *tx* and *txid* will be returned.
 
-*tx* represents the fully signed raw bitcoin transaction, and *txid* is
+*tx* represents the fully signed raw zcore transaction, and *txid* is
 the same as the *txid* argument.
 
-On failure, an error is reported (from bitcoind), and the inputs from
+On failure, an error is reported (from zcored), and the inputs from
 the transaction are unreserved.
 
 The following error codes may occur:

@@ -2,10 +2,10 @@
 #define LIGHTNING_WALLET_DB_H
 #include "config.h"
 
-#include <bitcoin/preimage.h>
-#include <bitcoin/pubkey.h>
-#include <bitcoin/short_channel_id.h>
-#include <bitcoin/tx.h>
+#include <zcore/preimage.h>
+#include <zcore/pubkey.h>
+#include <zcore/short_channel_id.h>
+#include <zcore/tx.h>
 #include <ccan/autodata/autodata.h>
 #include <ccan/json_escape/json_escape.h>
 #include <ccan/short_types/short_types.h>
@@ -102,7 +102,7 @@ void db_bind_sha256(struct db_stmt *stmt, int pos, const struct sha256 *s);
 void db_bind_sha256d(struct db_stmt *stmt, int pos, const struct sha256_double *s);
 void db_bind_secret(struct db_stmt *stmt, int pos, const struct secret *s);
 void db_bind_secret_arr(struct db_stmt *stmt, int col, const struct secret *s);
-void db_bind_txid(struct db_stmt *stmt, int pos, const struct bitcoin_txid *t);
+void db_bind_txid(struct db_stmt *stmt, int pos, const struct zcore_txid *t);
 void db_bind_node_id(struct db_stmt *stmt, int pos, const struct node_id *ni);
 void db_bind_node_id_arr(struct db_stmt *stmt, int col,
 			 const struct node_id *ids);
@@ -114,7 +114,7 @@ void db_bind_short_channel_id_arr(struct db_stmt *stmt, int col,
 void db_bind_signature(struct db_stmt *stmt, int col,
 		       const secp256k1_ecdsa_signature *sig);
 void db_bind_timeabs(struct db_stmt *stmt, int col, struct timeabs t);
-void db_bind_tx(struct db_stmt *stmt, int col, const struct bitcoin_tx *tx);
+void db_bind_tx(struct db_stmt *stmt, int col, const struct zcore_tx *tx);
 void db_bind_amount_msat(struct db_stmt *stmt, int pos,
 			 const struct amount_msat *msat);
 void db_bind_amount_sat(struct db_stmt *stmt, int pos,
@@ -138,7 +138,7 @@ void db_column_sha256d(struct db_stmt *stmt, int col, struct sha256_double *shad
 void db_column_secret(struct db_stmt *stmt, int col, struct secret *s);
 struct secret *db_column_secret_arr(const tal_t *ctx, struct db_stmt *stmt,
 				    int col);
-void db_column_txid(struct db_stmt *stmt, int pos, struct bitcoin_txid *t);
+void db_column_txid(struct db_stmt *stmt, int pos, struct zcore_txid *t);
 void db_column_node_id(struct db_stmt *stmt, int pos, struct node_id *ni);
 struct node_id *db_column_node_id_arr(const tal_t *ctx, struct db_stmt *stmt,
 				      int col);
@@ -150,7 +150,7 @@ db_column_short_channel_id_arr(const tal_t *ctx, struct db_stmt *stmt, int col);
 bool db_column_signature(struct db_stmt *stmt, int col,
 			 secp256k1_ecdsa_signature *sig);
 struct timeabs db_column_timeabs(struct db_stmt *stmt, int col);
-struct bitcoin_tx *db_column_tx(const tal_t *ctx, struct db_stmt *stmt, int col);
+struct zcore_tx *db_column_tx(const tal_t *ctx, struct db_stmt *stmt, int col);
 
 #define db_column_arr(ctx, stmt, col, type)			\
 	((type *)db_column_arr_((ctx), (stmt), (col),		\
